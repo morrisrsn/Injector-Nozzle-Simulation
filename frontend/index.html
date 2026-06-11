@@ -1,0 +1,2334 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Düsenrechner</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f5;
+      --surface: #ffffff;
+      --surface-strong: #f9fbfa;
+      --line: #d8dfdc;
+      --line-strong: #b8c5c0;
+      --text: #17211d;
+      --muted: #5f6d68;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --accent-soft: #d9f1ed;
+      --warning: #9a5b00;
+      --warning-bg: #fff4db;
+      --error: #a12222;
+      --error-bg: #fee7e7;
+      --blue: #2457a6;
+      --amber: #b36b00;
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 760;
+    }
+
+    .status {
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .status[data-state="error"] .status-dot {
+      background: var(--error);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    aside,
+    main {
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 2px rgba(23, 33, 29, 0.04);
+    }
+
+    .input-panel {
+      position: sticky;
+      top: 66px;
+      max-height: calc(100vh - 82px);
+      overflow: auto;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-strong);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 720;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .form-body {
+      padding: 12px 14px 14px;
+    }
+
+    .dashboard-tabs,
+    .input-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      padding: 10px 10px 0;
+    }
+
+    .input-tabs {
+      padding-top: 8px;
+    }
+
+    .dashboard-tab,
+    .input-tab {
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 750;
+      padding: 7px 8px;
+    }
+
+    .dashboard-tab[aria-selected="true"],
+    .input-tab[aria-selected="true"] {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+
+    .mode-note {
+      margin: 10px 14px 0;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfc;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .section {
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .section:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .section h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      position: relative;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label,
+    .field-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .label-help-target {
+      cursor: help;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .label-help-target:hover {
+      text-decoration-color: var(--line-strong);
+    }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .help-dot {
+      width: 17px;
+      height: 17px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      color: var(--muted);
+      background: #fff;
+      cursor: help;
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+      width: max-content;
+      max-width: min(240px, calc(100vw - 20px));
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: #17211d;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(23, 33, 29, 0.22);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.35;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(3px);
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .option-popover {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 6px);
+      z-index: 30;
+      display: none;
+      flex-wrap: wrap;
+      gap: 5px;
+      width: max-content;
+      max-width: min(320px, calc(100vw - 32px));
+      padding: 6px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(23, 33, 29, 0.14);
+    }
+
+    .field:hover .option-popover,
+    .field:focus-within .option-popover {
+      display: flex;
+    }
+
+    .quick-option {
+      min-height: 26px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface-strong);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+      padding: 4px 8px;
+    }
+
+    .quick-option:hover {
+      border-color: var(--accent);
+      color: var(--accent-strong);
+    }
+
+    input,
+    select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      padding: 7px 9px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    input.has-unit {
+      padding-right: 48px;
+    }
+
+    .unit {
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #eef3f1;
+    }
+
+    .segment {
+      height: 31px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .segment[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--accent-strong);
+      box-shadow: 0 1px 2px rgba(23, 33, 29, 0.08);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .btn {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 750;
+      padding: 8px 12px;
+    }
+
+    .btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn:disabled {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
+    .output-stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .metric {
+      min-height: 74px;
+      padding: 11px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric-value {
+      margin-top: 7px;
+      font-size: 19px;
+      font-weight: 780;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .metric-unit {
+      margin-left: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 8px 10px 0;
+    }
+
+    .tab {
+      min-height: 33px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 720;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+
+    .tab[aria-selected="true"] {
+      border-color: var(--line-strong);
+      background: #fff;
+      color: var(--text);
+    }
+
+    .tab:disabled,
+    .tab.is-hidden {
+      display: none;
+    }
+
+    .tab-view {
+      display: none;
+      padding: 12px 14px 14px;
+    }
+
+    .tab-view.active {
+      display: block;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .table-wrap.scrollable {
+      max-height: 420px;
+    }
+
+    .table-wrap.scrollable th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 460px;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      background: var(--surface-strong);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .chart-shell {
+      padding: 12px 14px 14px;
+    }
+
+    .chart-toolbar {
+      display: grid;
+      grid-template-columns: minmax(130px, 1fr) minmax(130px, 190px) minmax(120px, 170px) minmax(110px, 150px) auto;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .chart-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .chart-frame {
+      width: 100%;
+      height: 430px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfc;
+      overflow: hidden;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .axis {
+      stroke: #91a19b;
+      stroke-width: 1;
+      stroke-dasharray: 4 5;
+    }
+
+    .plot-axis {
+      stroke: #52605b;
+      stroke-width: 1.2;
+    }
+
+    .plot-tick {
+      stroke: #52605b;
+      stroke-width: 1;
+    }
+
+    .plot-label {
+      fill: #52605b;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .plot-tick-label {
+      fill: #5f6d68;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .contour-fill {
+      fill: rgba(15, 118, 110, 0.16);
+      stroke: var(--accent);
+      stroke-width: 2;
+    }
+
+    .contour-outline {
+      fill: none;
+      stroke: #17211d;
+      stroke-width: 1.4;
+      opacity: 0.8;
+    }
+
+    .throat-line {
+      stroke: var(--amber);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 5;
+    }
+
+    .notice {
+      display: none;
+      margin: 12px 14px 0;
+      padding: 10px 12px;
+      border-radius: 7px;
+      border: 1px solid #f0cf8e;
+      background: var(--warning-bg);
+      color: var(--warning);
+      line-height: 1.4;
+    }
+
+    .notice.active {
+      display: block;
+    }
+
+    .notice.error {
+      border-color: #efaaaa;
+      background: var(--error-bg);
+      color: var(--error);
+    }
+
+    .composition {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-strong);
+      padding: 5px 9px;
+      font-weight: 700;
+    }
+
+    .pill span {
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .injector-visual {
+      width: 100%;
+      height: 260px;
+      margin-bottom: 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfc;
+      overflow: hidden;
+    }
+
+    @media (max-width: 1080px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .input-panel {
+        position: static;
+        max-height: none;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+      }
+
+      .chart-toolbar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .layout {
+        padding: 10px;
+      }
+
+      .field-grid,
+      .actions,
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-frame {
+        height: 340px;
+      }
+
+      .chart-toolbar,
+      .input-tabs {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Düsenrechner</h1>
+      <div class="status" id="status" data-state="ready">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Bereit</span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside>
+        <form class="panel input-panel" id="configForm" novalidate>
+          <div class="panel-header">
+            <p class="panel-title">Eingabe</p>
+          </div>
+          <div class="dashboard-tabs" id="dashboardTabs" role="tablist" aria-label="Dashboard"></div>
+          <div class="input-tabs" id="inputTabs" role="tablist" aria-label="Rechenweg"></div>
+          <div class="mode-note" id="modeNote"></div>
+          <div class="form-body" id="formBody"></div>
+        </form>
+      </aside>
+
+      <main class="output-stack">
+        <section class="panel">
+          <div class="panel-header">
+            <p class="panel-title">Kennwerte</p>
+          </div>
+          <div class="metrics" id="summaryMetrics"></div>
+          <div class="notice" id="notice"></div>
+        </section>
+
+        <section class="panel">
+          <div class="tabs" role="tablist" aria-label="Ausgabe">
+            <button class="tab" type="button" role="tab" aria-selected="true" data-tab="thermo">Thermodynamik</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tab="performance">Performance</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tab="geometry">Geometrie</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tab="injector">Injektor</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tab="contour">Kontur</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tab="flow">Profile</button>
+          </div>
+
+          <div class="tab-view active" id="tab-thermo" role="tabpanel"></div>
+          <div class="tab-view" id="tab-performance" role="tabpanel"></div>
+          <div class="tab-view" id="tab-geometry" role="tabpanel"></div>
+          <div class="tab-view" id="tab-injector" role="tabpanel"></div>
+          <div class="tab-view" id="tab-contour" role="tabpanel"></div>
+          <div class="tab-view" id="tab-flow" role="tabpanel"></div>
+        </section>
+
+        <section class="panel">
+          <div class="chart-shell">
+            <div class="chart-toolbar">
+              <h2 class="chart-title" id="plotTitle">Kontur</h2>
+              <select id="plotMode" aria-label="Plotmodus">
+                <option value="contour">2D-Kontur</option>
+                <option value="multi">Alle Verläufe</option>
+                <option value="solid3d">3D-Ansicht</option>
+                <option value="section">Schnitt</option>
+              </select>
+              <select id="fieldOverlay" aria-label="2D-Feld">
+                <option value="none">Feld: aus</option>
+                <option value="M">Machzahl</option>
+                <option value="p">Druck</option>
+                <option value="T">Temperatur</option>
+                <option value="v">Geschwindigkeit</option>
+              </select>
+              <select id="viewMode" aria-label="Ansicht">
+                <option value="side">Seite</option>
+                <option value="iso">Schräg</option>
+                <option value="front">Front</option>
+              </select>
+              <button class="btn" type="button" id="downloadCsv">CSV</button>
+            </div>
+            <div class="chart-frame">
+              <svg id="contourSvg" viewBox="0 0 900 430" role="img" aria-label="Düsenkontur"></svg>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <datalist id="gasOptions">
+    <option value="O2"></option>
+    <option value="Nitrogen"></option>
+    <option value="Air"></option>
+    <option value="Ethanol"></option>
+    <option value="CH4"></option>
+    <option value="H2"></option>
+  </datalist>
+  <datalist id="fuelOptions">
+    <option value="C2H5OH"></option>
+    <option value="Ethanol"></option>
+    <option value="CH4"></option>
+    <option value="Methan"></option>
+    <option value="H2"></option>
+    <option value="Wasserstoff"></option>
+  </datalist>
+  <datalist id="oxidizerOptions">
+    <option value="Air"></option>
+    <option value="O2"></option>
+    <option value="N2O"></option>
+    <option value="Lachgas"></option>
+  </datalist>
+
+  <script>
+    const dashboardModes = [
+      {
+        key: "nozzle",
+        label: "Düse",
+        note: "Manuelle Kammerbedingungen und klassische Düsenrechnung."
+      },
+      {
+        key: "injector",
+        label: "Düse + Injektor",
+        note: "Tankdrücke, Tanktemperaturen und Injektorbohrungen bestimmen Kammerdruck, Mischungsverhältnis und Düsenzustand."
+      }
+    ];
+
+    const inputModes = [
+      {
+        key: "design",
+        label: "Düse auslegen",
+        nozzleMode: "design",
+        note: "Berechnet Hals, Austritt und Brennraumgeometrie aus Massenstrom, Kammerzustand und Auslegungsannahmen."
+      },
+      {
+        key: "exit",
+        label: "Austrittsbedingungen",
+        nozzleMode: "given_geometry",
+        note: "Nutzt deine vorgegebene Düsengeometrie und bestimmt Massenstrom, Austrittsdruck, Temperatur, Machzahl und Schub."
+      }
+    ];
+
+    const fieldGroups = [
+      {
+        title: "Betrieb",
+        tab: "common",
+        fields: [
+          { key: "mode", label: "Modus", type: "segment", options: [["combustion", "Verbrennung"], ["cold_gas", "Kaltgas"]], full: true, desc: "Wählt, ob das Gas als Kaltgas oder als vereinfachtes Verbrennungsgas berechnet wird." },
+          { key: "p_c", label: "Kammerdruck", unit: "Pa", type: "number", min: 1, desc: "Stagnationsdruck in der Brennkammer beziehungsweise im Reservoir vor der Düse." },
+          { key: "p_amb", label: "Umgebungsdruck", unit: "Pa", type: "number", min: 1, desc: "Druck der Umgebung, gegen den die Düse expandiert." },
+          { key: "T_amb", label: "Umgebungstemp.", unit: "K", type: "number", min: 1, desc: "Umgebungstemperatur; aktuell als Referenzwert in den Eingaben geführt." }
+        ]
+      },
+      {
+        title: "Eintritt",
+        tab: "common",
+        fields: [
+          { key: "T_in", label: "Eintrittstemp.", unit: "K", type: "number", min: 1, desc: "Gastemperatur vor der Düse im Kaltgasmodus." },
+          { key: "fuel_T", label: "Brennstofftemp.", unit: "K", type: "number", min: 1, desc: "Eintrittstemperatur des Brennstoffs für die Enthalpiebilanz der Verbrennung." },
+          { key: "oxidizer_T", label: "Oxidatortemp.", unit: "K", type: "number", min: 1, desc: "Eintrittstemperatur des Oxidators für die Enthalpiebilanz der Verbrennung." },
+          { key: "eta_nozzle", label: "Düsenwirkungsgrad", unit: "-", type: "number", min: 0.01, max: 1, desc: "Faktor für Verluste in der Düse; 1 entspricht idealer Umwandlung in Austrittsgeschwindigkeit." },
+          { key: "C_d", label: "Entladungskoeff.", unit: "-", type: "number", min: 0.01, max: 1.5, desc: "Korrekturfaktor für den realen Massenstrom durch den Hals gegenüber der idealen Rechnung." }
+        ]
+      },
+      {
+        title: "Medien",
+        tab: "common",
+        fields: [
+          { key: "combustion_model", label: "Verbrennungsmodell", type: "segment", options: [["equilibrium", "Gleichgewicht"], ["complete", "Vollständig"]], full: true, desc: "Gleichgewicht minimiert Gibbs-Energie mit NASA-7-Produktdaten; vollständig erzwingt CO2/H2O/N2/O2 ohne Dissoziation." },
+          { key: "gas_medium", label: "Kaltgas", type: "text", list: "gasOptions", quickOptions: ["O2", "Air", "N2", "N2O", "CH4", "H2"], desc: "Gasname für die Kaltgasrechnung, zum Beispiel O2 oder H2." },
+          { key: "fuel", label: "Brennstoff", type: "text", list: "fuelOptions", quickOptions: ["C2H5OH", "CH4", "H2"], desc: "Brennstoffformel für den Verbrennungsmodus; unterstützt werden C2H5OH, CH4 und H2." },
+          { key: "oxidizer", label: "Oxidator", type: "text", list: "oxidizerOptions", quickOptions: ["Air", "O2", "N2O", "Lachgas"], desc: "Oxidationsmittel im Verbrennungsmodus, aktuell Air, O2 oder N2O/Lachgas." },
+          { key: "phi", label: "Äquivalenzverhältnis", unit: "-", type: "number", min: 0.01, desc: "Verhältnis von realem zu stöchiometrischem Kraftstoff-Oxidator-Verhältnis." }
+        ]
+      },
+      {
+        title: "Düse Auslegen",
+        tab: "design",
+        fields: [
+          { key: "mdot", label: "Massenstrom", unit: "kg/s", type: "number", min: 0.000001, desc: "Gewünschter Massenstrom, aus dem die notwendige Halsfläche berechnet wird." },
+          { key: "chamber_method", label: "Methode", type: "segment", options: [["A", "A"], ["B", "B"]], full: true, desc: "Methode A nutzt das Kontraktionsverhältnis, Methode B nutzt die charakteristische Länge L*." },
+          { key: "contraction_ratio", label: "Kontraktionsverh.", unit: "-", type: "number", min: 1.01, desc: "Verhältnis aus Brennkammerquerschnitt und Halsquerschnitt bei Methode A." },
+          { key: "L_star", label: "L*", unit: "m", type: "number", min: 0.001, desc: "Charakteristische Brennkammerlänge für Methode B, definiert über Kammervolumen geteilt durch Halsfläche." },
+          { key: "alpha_conv", label: "Konvergenzwinkel", unit: "°", type: "number", min: 1, max: 89, desc: "Halbwinkel des konvergenten Düsenabschnitts." },
+          { key: "alpha_div", label: "Divergenzwinkel", unit: "°", type: "number", min: 1, max: 89, desc: "Halbwinkel des divergenten Düsenabschnitts." }
+        ]
+      },
+      {
+        title: "Austrittsbedingungen Aus Vorgabe",
+        tab: "exit",
+        fields: [
+          { key: "D_t_given", label: "Halsdurchmesser", unit: "m", type: "number", min: 0.000001, desc: "Vorgegebener Durchmesser des Düsenhalses im Geometriemodus." },
+          { key: "D_e_given", label: "Austrittsdurchm.", unit: "m", type: "number", min: 0.000001, desc: "Vorgegebener Austrittsdurchmesser im Geometriemodus." },
+          { key: "D_c_given", label: "Kammerdurchm.", unit: "m", type: "number", min: 0.000001, desc: "Vorgegebener Brennkammerdurchmesser im Geometriemodus." },
+          { key: "L_c_given", label: "Kammerlänge", unit: "m", type: "number", min: 0.000001, desc: "Vorgegebene Brennkammerlänge im Geometriemodus; sie bestimmt die linke Kammerstrecke der Kontur." },
+          { key: "alpha_conv", label: "Konvergenzwinkel", unit: "°", type: "number", min: 1, max: 89, desc: "Halbwinkel des konvergenten Düsenabschnitts." },
+          { key: "alpha_div", label: "Divergenzwinkel", unit: "°", type: "number", min: 1, max: 89, desc: "Halbwinkel des divergenten Düsenabschnitts." }
+        ]
+      },
+      {
+        title: "Injektor Medien",
+        tab: "injector",
+        fields: [
+          { key: "mode", label: "Modus", type: "segment", options: [["combustion", "Verbrennung"], ["cold_gas", "Kaltgas"]], full: true, desc: "Für Injektor + Düse ist Verbrennung normalerweise der sinnvolle Modus." },
+          { key: "fuel", label: "Brennstoff", type: "text", list: "fuelOptions", quickOptions: ["C2H5OH", "CH4", "H2"], desc: "Brennstoff aus dem Kraftstofftank; unterstützt werden C2H5OH, CH4 und H2." },
+          { key: "oxidizer", label: "Oxidator", type: "text", list: "oxidizerOptions", quickOptions: ["N2O", "O2", "Air", "Lachgas"], desc: "Oxidator aus dem Oxidatortank, zum Beispiel N2O/Lachgas oder O2." },
+          { key: "combustion_model", label: "Verbrennungsmodell", type: "segment", options: [["equilibrium", "Gleichgewicht"], ["complete", "Vollständig"]], full: true, desc: "Thermochemie-Modell nach perfekter Mischung hinter dem Injektor." },
+          { key: "p_amb", label: "Umgebungsdruck", unit: "Pa", type: "number", min: 1, desc: "Umgebungsdruck für die spätere Düsenexpansion." },
+          { key: "eta_nozzle", label: "Düsenwirkungsgrad", unit: "-", type: "number", min: 0.01, max: 1, desc: "Wirkungsgrad der Düse nach dem perfekt gemischten Brennraum." },
+          { key: "C_d", label: "Düsen-Cd", unit: "-", type: "number", min: 0.01, max: 1.5, desc: "Entladungskoeffizient des Düsenhalses." }
+        ]
+      },
+      {
+        title: "Kraftstofftank",
+        tab: "injector",
+        fields: [
+          { key: "fuel_tank_p", label: "Tankdruck", unit: "Pa", type: "number", min: 1, desc: "Stagnationsdruck im Kraftstofftank vor dem Injektor." },
+          { key: "fuel_tank_T", label: "Tanktemperatur", unit: "K", type: "number", min: 1, desc: "Temperatur des Kraftstoffs im Tank." },
+          { key: "fuel_tank_V", label: "Tankvolumen", unit: "m³", type: "number", min: 0.000001, desc: "Tankvolumen zur groben Vorrats- und Brenndauerabschätzung." },
+          { key: "fuel_injector_d", label: "Lochdurchmesser", unit: "m", type: "number", min: 0.000001, desc: "Durchmesser einer Kraftstoff-Injektorbohrung." },
+          { key: "fuel_injector_L", label: "Lochlänge", unit: "m", type: "number", min: 0.000001, desc: "Axiale Länge einer Kraftstoff-Injektorbohrung; zusammen mit dem Durchmesser ergibt sie L/D." },
+          { key: "fuel_injector_count", label: "Lochanzahl", unit: "-", type: "number", min: 1, desc: "Anzahl gleicher Kraftstoffbohrungen." },
+          { key: "fuel_injector_Cd", label: "Injektor-Cd", unit: "-", type: "number", min: 0.01, max: 1.5, desc: "Entladungskoeffizient der Kraftstoffbohrungen." }
+        ]
+      },
+      {
+        title: "Oxidatortank",
+        tab: "injector",
+        fields: [
+          { key: "oxidizer_tank_p", label: "Tankdruck", unit: "Pa", type: "number", min: 1, desc: "Stagnationsdruck im Oxidatortank vor dem Injektor." },
+          { key: "oxidizer_tank_T", label: "Tanktemperatur", unit: "K", type: "number", min: 1, desc: "Temperatur des Oxidators im Tank; bei N2O wird Nähe zur Siedelinie grob erkannt." },
+          { key: "oxidizer_tank_V", label: "Tankvolumen", unit: "m³", type: "number", min: 0.000001, desc: "Tankvolumen zur groben Vorrats- und Brenndauerabschätzung." },
+          { key: "oxidizer_injector_d", label: "Lochdurchmesser", unit: "m", type: "number", min: 0.000001, desc: "Durchmesser einer Oxidator-Injektorbohrung." },
+          { key: "oxidizer_injector_L", label: "Lochlänge", unit: "m", type: "number", min: 0.000001, desc: "Axiale Länge einer Oxidator-Injektorbohrung; zusammen mit dem Durchmesser ergibt sie L/D." },
+          { key: "oxidizer_injector_count", label: "Lochanzahl", unit: "-", type: "number", min: 1, desc: "Anzahl gleicher Oxidatorbohrungen." },
+          { key: "oxidizer_injector_Cd", label: "Injektor-Cd", unit: "-", type: "number", min: 0.01, max: 1.5, desc: "Entladungskoeffizient der Oxidatorbohrungen." }
+        ]
+      },
+      {
+        title: "Düse Hinter Injektor",
+        tab: "injector",
+        fields: [
+          { key: "D_t_given", label: "Halsdurchmesser", unit: "m", type: "number", min: 0.000001, desc: "Düsenhals, über den die Injektor-/Düsen-Massenbilanz den Kammerdruck bestimmt." },
+          { key: "D_e_given", label: "Austrittsdurchm.", unit: "m", type: "number", min: 0.000001, desc: "Austrittsdurchmesser der Düse." },
+          { key: "D_c_given", label: "Kammerdurchm.", unit: "m", type: "number", min: 0.000001, desc: "Brennkammerdurchmesser für die Konturvisualisierung." },
+          { key: "L_c_given", label: "Kammerlänge", unit: "m", type: "number", min: 0.000001, desc: "Brennkammerlänge für die Konturvisualisierung." },
+          { key: "alpha_conv", label: "Konvergenzwinkel", unit: "°", type: "number", min: 1, max: 89, desc: "Halbwinkel des konvergenten Abschnitts." },
+          { key: "alpha_div", label: "Divergenzwinkel", unit: "°", type: "number", min: 1, max: 89, desc: "Halbwinkel des divergenten Abschnitts." },
+          { key: "injector_pressure_margin", label: "Druckreserve", unit: "Pa", type: "number", min: 1, desc: "Mindestabstand zum kleineren Tankdruck bei der Kammerdrucksuche." },
+          { key: "num_points", label: "Konturpunkte", unit: "", type: "number", min: 30, max: 1200, desc: "Anzahl der Stützpunkte für Kontur- und Feldvisualisierung." }
+        ]
+      },
+      {
+        title: "Ausgabe",
+        tab: "common",
+        fields: [
+          { key: "num_points", label: "Konturpunkte", unit: "", type: "number", min: 30, max: 1200, desc: "Anzahl der berechneten Stützpunkte für Konturplot und CSV-Ausgabe." }
+        ]
+      }
+    ];
+
+    const summaryMetrics = [
+      { label: "Schub", unit: "N", value: data => data.performance.thrust, digits: 2 },
+      { label: "Austritts-Mach", unit: "", value: data => data.performance.M_e, digits: 3 },
+      { label: "Hals-Durchmesser", unit: "mm", value: data => data.geometry.D_t * 1000, digits: 2 },
+      { label: "Austritts-Durchmesser", unit: "mm", value: data => data.geometry.D_e * 1000, digits: 2 }
+    ];
+
+    const tabTables = {
+      thermo: [
+        ["p_c", "bar", data => data.state.p / 1e5, 3],
+        ["T_c", "K", data => data.state.T, 2],
+        ["Dichte", "kg/m³", data => data.state.rho, 4],
+        ["R_mix", "J/(kg*K)", data => data.state.R_spec, 2],
+        ["Molare Masse", "kg/kmol", data => data.state.M_w, 3],
+        ["Gamma", "-", data => data.state.gamma, 4],
+        ["cp", "J/(kg*K)", data => data.state.cp, 2],
+        ["Z", "-", data => data.state.Z, 4],
+        ["Schallgeschw.", "m/s", data => data.state.a, 2]
+      ],
+      performance: [
+        ["Choked", "", data => data.performance.is_choked ? "Ja" : "Nein"],
+        ["Massenstrom effektiv", "kg/s", data => data.performance.mdot, 5],
+        ["Flächenverhältnis", "-", data => data.performance.A_ratio, 4],
+        ["Austritts-Mach", "-", data => data.performance.M_e, 4],
+        ["p_exit", "Pa", data => data.performance.p_e, 1],
+        ["v_exit ideal", "m/s", data => data.performance.v_e_ideal, 2],
+        ["v_exit", "m/s", data => data.performance.v_e, 2],
+        ["T_exit", "K", data => data.performance.T_e, 2],
+        ["Druckschub", "N", data => data.performance.pressure_thrust, 2],
+        ["Schub", "N", data => data.performance.thrust, 2]
+      ],
+      geometry: [
+        ["A_c", "mm²", data => data.geometry.A_c * 1e6, 3],
+        ["A_t", "mm²", data => data.geometry.A_t * 1e6, 3],
+        ["A_e", "mm²", data => data.geometry.A_e * 1e6, 3],
+        ["D_c", "mm", data => data.geometry.D_c * 1000, 3],
+        ["D_t", "mm", data => data.geometry.D_t * 1000, 3],
+        ["D_e", "mm", data => data.geometry.D_e * 1000, 3],
+        ["L_c", "mm", data => data.geometry.L_c * 1000, 3],
+        ["L_conv", "mm", data => data.geometry.L_conv * 1000, 3],
+        ["L_div", "mm", data => data.geometry.L_div * 1000, 3],
+        ["L_total Düse", "mm", data => data.geometry.L_total * 1000, 3],
+        ["alpha_conv", "°", data => data.geometry.alpha_conv, 2],
+        ["alpha_div", "°", data => data.geometry.alpha_div, 2]
+      ]
+    };
+
+    const allFields = fieldGroups.flatMap(group => group.fields);
+    const uniqueFields = [...new Map(allFields.map(field => [field.key, field])).values()];
+    const fieldByKey = Object.fromEntries(uniqueFields.map(field => [field.key, field]));
+    const tableDescriptions = {
+      "p_c": "Stagnationsdruck in der Brennkammer beziehungsweise vor der Düse.",
+      "T_c": "Stagnationstemperatur des Produktgases nach der Thermochemie.",
+      "Dichte": "Gasdichte im Kammerzustand aus idealer Gasgleichung.",
+      "R_mix": "Spezifische Gaskonstante der Produkt- oder Kaltgasmischung.",
+      "Molare Masse": "Gemittelte molare Masse der Gaszusammensetzung.",
+      "Gamma": "Isentropenexponent cp/cv, wichtig für Mach-, Druck- und Temperaturbeziehungen.",
+      "cp": "Spezifische Wärmekapazität bei konstantem Druck.",
+      "Z": "Kompressibilitätsfaktor; aktuell 1.0 im idealen Gasmodell.",
+      "Schallgeschw.": "Schallgeschwindigkeit im Kammerzustand.",
+      "Choked": "Zeigt, ob die Strömung am Hals Mach 1 erreicht.",
+      "Massenstrom effektiv": "Im Auslegungsmodus der eingegebene Massenstrom, im Vorgabemodus aus Halsfläche und Kammerzustand berechnet.",
+      "Flächenverhältnis": "Verhältnis A_e/A_t zwischen Austritts- und Halsfläche.",
+      "Austritts-Mach": "Machzahl am Düsenaustritt.",
+      "p_exit": "Statischer Druck am Düsenaustritt.",
+      "v_exit ideal": "Ideale isentrope Austrittsgeschwindigkeit vor Wirkungsgradkorrektur.",
+      "v_exit": "Austrittsgeschwindigkeit mit Düsenwirkungsgrad.",
+      "T_exit": "Statische Austrittstemperatur.",
+      "Druckschub": "Zusatzschub durch Druckdifferenz zwischen Austritt und Umgebung.",
+      "Schub": "Gesamtschub aus Impuls- und Druckanteil.",
+      "A_c": "Brennkammerquerschnitt.",
+      "A_t": "Halsquerschnitt.",
+      "A_e": "Austrittsquerschnitt.",
+      "D_c": "Brennkammerdurchmesser.",
+      "D_t": "Düsenhalsdurchmesser.",
+      "D_e": "Austrittsdurchmesser.",
+      "L_c": "Brennkammerlänge vor dem konvergenten Abschnitt.",
+      "L_conv": "Länge des konvergenten Abschnitts bis zum Hals.",
+      "L_div": "Länge des divergenten Abschnitts ab dem Hals.",
+      "L_total Düse": "Länge von konvergentem und divergentem Düsenabschnitt ohne Brennkammer.",
+      "alpha_conv": "Halbwinkel des konvergenten Abschnitts.",
+      "alpha_div": "Halbwinkel des divergenten Abschnitts.",
+      "x [m]": "Position entlang der Düsenachse.",
+      "r [m]": "Innenradius der rotationssymmetrischen Kontur.",
+      "Mach": "Lokale Machzahl entlang der Kontur.",
+      "p [bar]": "Lokaler statischer Druck entlang der Kontur.",
+      "T [K]": "Lokale statische Temperatur entlang der Kontur.",
+      "v [m/s]": "Lokale Strömungsgeschwindigkeit entlang der Kontur.",
+      "Modell": "Verwendetes Thermochemiemodell.",
+      "Stöchiometrie": "Stöchiometrische Reaktionsbilanz für einen Mol Ethanol.",
+      "O/F stöch.": "Stöchiometrisches Oxidator-zu-Brennstoff-Massenverhältnis.",
+      "O/F aktuell": "Durch phi bestimmtes aktuelles Oxidator-zu-Brennstoff-Massenverhältnis.",
+      "Kammerdruck": "Aus Injektor-/Düsen-Massenbilanz bestimmter Brennkammerdruck.",
+      "Gesamt-m_dot": "Summe aus Kraftstoff- und Oxidatormassenstrom durch den Injektor.",
+      "Düsenkapazität": "Massenstrom, den die Düse beim berechneten Kammerdruck schlucken kann.",
+      "O/F real": "Reales Oxidator-zu-Kraftstoff-Massenverhältnis aus den Injektorströmen.",
+      "phi real": "Äquivalenzverhältnis, das direkt aus dem realen Injektor-O/F folgt.",
+      "phi Modell": "Äquivalenzverhältnis, mit dem die Brennraum-Thermochemie weitergerechnet wird.",
+      "Fuel d": "Durchmesser einer Kraftstoff-Injektorbohrung.",
+      "Fuel L": "Axiale Länge einer Kraftstoff-Injektorbohrung.",
+      "Fuel L/D": "Verhältnis aus Lochlänge zu Lochdurchmesser für den Kraftstoff-Injektor.",
+      "Fuel A ges.": "Gesamte offene Kraftstoff-Injektorfläche aus Lochfläche und Lochanzahl.",
+      "Fuel m_dot": "Kraftstoffmassenstrom durch alle Kraftstoffbohrungen.",
+      "Fuel v_exit": "Austrittsgeschwindigkeit des Kraftstoffs am Injektorloch.",
+      "Fuel Phase": "Vereinfacht bestimmte Phase am Kraftstoff-Injektor.",
+      "Ox d": "Durchmesser einer Oxidator-Injektorbohrung.",
+      "Ox L": "Axiale Länge einer Oxidator-Injektorbohrung.",
+      "Ox L/D": "Verhältnis aus Lochlänge zu Lochdurchmesser für den Oxidator-Injektor.",
+      "Ox A ges.": "Gesamte offene Oxidator-Injektorfläche aus Lochfläche und Lochanzahl.",
+      "Ox m_dot": "Oxidatormassenstrom durch alle Oxidatorbohrungen.",
+      "Ox v_exit": "Austrittsgeschwindigkeit des Oxidators am Injektorloch.",
+      "Ox Phase": "Vereinfacht bestimmte Phase am Oxidator-Injektor.",
+      "Fuel Tankmasse": "Grobe Tankmassenabschätzung aus Volumen und Dichte.",
+      "Ox Tankmasse": "Grobe Tankmassenabschätzung aus Volumen und Dichte.",
+      "Fuel Brenndauer": "Grobe Dauer bis Kraftstofftank leer ist, bei konstantem Massenstrom.",
+      "Ox Brenndauer": "Grobe Dauer bis Oxidatortank leer ist, bei konstantem Massenstrom."
+    };
+
+    let defaults = {};
+    let formValues = {};
+    let activeDashboard = "nozzle";
+    let activeInputMode = "design";
+    let currentResult = null;
+    const formBody = document.getElementById("formBody");
+    const form = document.getElementById("configForm");
+    const dashboardTabs = document.getElementById("dashboardTabs");
+    const inputTabs = document.getElementById("inputTabs");
+    const modeNote = document.getElementById("modeNote");
+    const notice = document.getElementById("notice");
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+
+    function setStatus(text, state = "ready") {
+      statusText.textContent = text;
+      statusEl.dataset.state = state;
+    }
+
+    function formatValue(value, digits = 2) {
+      if (typeof value === "string") return value;
+      if (!Number.isFinite(value)) return "n/a";
+      return value.toLocaleString("de-DE", {
+        maximumFractionDigits: digits,
+        minimumFractionDigits: Math.min(digits, 2)
+      });
+    }
+
+    function parseNumberValue(rawValue) {
+      const normalized = String(rawValue).trim().replace(/\s/g, "").replace(",", ".");
+      if (!normalized) return NaN;
+      return Number(normalized);
+    }
+
+    function positionTooltip(tooltip, event) {
+      const margin = 10;
+      const gap = 12;
+
+      tooltip.classList.add("visible");
+      const rect = tooltip.getBoundingClientRect();
+
+      let left = event.clientX - rect.width / 2;
+      let top = event.clientY - rect.height - gap;
+
+      left = Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin));
+      if (top < margin) top = event.clientY + gap;
+      if (top + rect.height > window.innerHeight - margin) {
+        top = Math.max(margin, window.innerHeight - rect.height - margin);
+      }
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function hideTooltip(tooltip) {
+      tooltip.classList.remove("visible");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function ensureFloatingTooltip() {
+      let tooltip = document.getElementById("floatingTooltip");
+      if (!tooltip) {
+        tooltip = document.createElement("span");
+        tooltip.id = "floatingTooltip";
+        tooltip.className = "tooltip";
+        document.body.append(tooltip);
+      }
+      return tooltip;
+    }
+
+    function attachHoverHelp(container) {
+      container.querySelectorAll("[data-help]").forEach(target => {
+        target.addEventListener("mouseenter", event => {
+          const tooltip = ensureFloatingTooltip();
+          tooltip.textContent = target.dataset.help;
+          positionTooltip(tooltip, event);
+        });
+        target.addEventListener("mousemove", event => {
+          const tooltip = ensureFloatingTooltip();
+          tooltip.textContent = target.dataset.help;
+          positionTooltip(tooltip, event);
+        });
+        target.addEventListener("mouseleave", () => hideTooltip(ensureFloatingTooltip()));
+      });
+    }
+
+    function currentInputMode() {
+      return inputModes.find(mode => mode.key === activeInputMode) || inputModes[0];
+    }
+
+    function currentDashboard() {
+      return dashboardModes.find(mode => mode.key === activeDashboard) || dashboardModes[0];
+    }
+
+    function renderDashboardTabs() {
+      dashboardTabs.innerHTML = "";
+      dashboardModes.forEach(mode => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "dashboard-tab";
+        button.textContent = mode.label;
+        button.dataset.dashboard = mode.key;
+        button.setAttribute("aria-selected", String(mode.key === activeDashboard));
+        button.addEventListener("click", () => {
+          updateFormValuesFromDom();
+          activeDashboard = mode.key;
+          if (activeDashboard === "injector") {
+            activeInputMode = "exit";
+            formValues.chamber_source = "injector";
+            formValues.nozzle_mode = "given_geometry";
+          } else {
+            formValues.chamber_source = "manual";
+            formValues.nozzle_mode = currentInputMode().nozzleMode;
+          }
+          renderForm(formValues);
+          calculate();
+        });
+        dashboardTabs.append(button);
+      });
+    }
+
+    function renderInputTabs() {
+      inputTabs.innerHTML = "";
+      inputModes.forEach(mode => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "input-tab";
+        button.textContent = mode.label;
+        button.dataset.mode = mode.key;
+        button.setAttribute("aria-selected", String(mode.key === activeInputMode));
+        button.addEventListener("click", () => {
+          updateFormValuesFromDom();
+          activeInputMode = mode.key;
+          formValues.nozzle_mode = mode.nozzleMode;
+          renderForm(formValues);
+          calculate();
+        });
+        inputTabs.append(button);
+      });
+      modeNote.textContent = activeDashboard === "injector" ? currentDashboard().note : currentInputMode().note;
+    }
+
+    function setActiveOutputTab(key) {
+      const button = document.querySelector(`.tab[data-tab="${key}"]`);
+      if (!button || button.disabled) return;
+
+      document.querySelectorAll(".tab").forEach(item => item.setAttribute("aria-selected", "false"));
+      document.querySelectorAll(".tab-view").forEach(view => view.classList.remove("active"));
+      button.setAttribute("aria-selected", "true");
+      document.getElementById(`tab-${key}`).classList.add("active");
+    }
+
+    function updateOutputTabs() {
+      const injectorEnabled = activeDashboard === "injector";
+      const injectorTab = document.querySelector('.tab[data-tab="injector"]');
+      const injectorView = document.getElementById("tab-injector");
+      if (!injectorTab || !injectorView) return;
+
+      injectorTab.disabled = !injectorEnabled;
+      injectorTab.classList.toggle("is-hidden", !injectorEnabled);
+      injectorTab.setAttribute("aria-hidden", String(!injectorEnabled));
+      injectorView.hidden = !injectorEnabled;
+
+      if (!injectorEnabled && injectorTab.getAttribute("aria-selected") === "true") {
+        setActiveOutputTab("thermo");
+      }
+    }
+
+    function updateFormValuesFromDom() {
+      uniqueFields.forEach(field => {
+        if (field.type === "segment") {
+          const selected = document.querySelector(`.segmented[data-field="${field.key}"] .segment[aria-pressed="true"]`);
+          if (selected) formValues[field.key] = selected.dataset.value;
+          return;
+        }
+
+        const input = document.getElementById(field.key);
+        if (!input) return;
+        formValues[field.key] = field.type === "number" ? input.value : input.value.trim();
+      });
+      formValues.chamber_source = activeDashboard === "injector" ? "injector" : "manual";
+      formValues.nozzle_mode = activeDashboard === "injector" ? "given_geometry" : currentInputMode().nozzleMode;
+    }
+
+    function createInput(field, value) {
+      const wrapper = document.createElement("div");
+      wrapper.className = `field${field.full ? " full" : ""}`;
+
+      const tooltipId = `${field.key}-help`;
+      const labelRow = document.createElement("div");
+      labelRow.className = "label-row";
+
+      const label = document.createElement("label");
+      label.textContent = field.label;
+      label.htmlFor = field.key;
+      labelRow.append(label);
+
+      if (field.desc) {
+        const tooltip = document.createElement("span");
+        tooltip.className = "tooltip";
+        tooltip.id = tooltipId;
+        tooltip.textContent = field.desc;
+        wrapper.append(tooltip);
+
+        label.classList.add("label-help-target");
+        label.setAttribute("aria-describedby", tooltipId);
+        label.addEventListener("mouseenter", event => positionTooltip(tooltip, event));
+        label.addEventListener("mousemove", event => positionTooltip(tooltip, event));
+        label.addEventListener("mouseleave", () => hideTooltip(tooltip));
+      }
+
+      wrapper.append(labelRow);
+
+      if (field.type === "segment") {
+        const segment = document.createElement("div");
+        segment.className = "segmented";
+        segment.id = field.key;
+        segment.dataset.field = field.key;
+        if (field.desc) segment.setAttribute("aria-describedby", tooltipId);
+
+        field.options.forEach(([optionValue, optionLabel]) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "segment";
+          button.textContent = optionLabel;
+          button.dataset.value = optionValue;
+          button.setAttribute("aria-pressed", String(optionValue === value));
+          button.addEventListener("click", () => {
+            segment.querySelectorAll(".segment").forEach(item => item.setAttribute("aria-pressed", "false"));
+            button.setAttribute("aria-pressed", "true");
+          });
+          segment.append(button);
+        });
+
+        wrapper.append(segment);
+        return wrapper;
+      }
+
+      const inputWrap = document.createElement("div");
+      inputWrap.className = "input-wrap";
+      const input = document.createElement("input");
+      input.id = field.key;
+      input.name = field.key;
+      input.type = field.type === "number" ? "text" : field.type;
+      input.value = value;
+      if (field.desc) input.setAttribute("aria-describedby", tooltipId);
+
+      if (field.type === "number") {
+        input.inputMode = "decimal";
+        input.autocomplete = "off";
+      }
+
+      if (field.list) input.setAttribute("list", field.list);
+      if (field.unit) input.classList.add("has-unit");
+
+      inputWrap.append(input);
+
+      if (field.unit) {
+        const unit = document.createElement("span");
+        unit.className = "unit";
+        unit.textContent = field.unit;
+        inputWrap.append(unit);
+      }
+
+      wrapper.append(inputWrap);
+      if (field.quickOptions && field.quickOptions.length) {
+        const popover = document.createElement("div");
+        popover.className = "option-popover";
+        field.quickOptions.forEach(optionValue => {
+          const option = document.createElement("button");
+          option.type = "button";
+          option.className = "quick-option";
+          option.textContent = optionValue;
+          option.addEventListener("click", () => {
+            input.value = optionValue;
+            formValues[field.key] = optionValue;
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+          popover.append(option);
+        });
+        wrapper.append(popover);
+      }
+      return wrapper;
+    }
+
+    function renderForm(values = formValues) {
+      const forced = activeDashboard === "injector"
+        ? { chamber_source: "injector", nozzle_mode: "given_geometry" }
+        : { chamber_source: "manual", nozzle_mode: currentInputMode().nozzleMode };
+      formValues = { ...defaults, ...formValues, ...values, ...forced };
+      renderDashboardTabs();
+      renderInputTabs();
+      inputTabs.style.display = activeDashboard === "injector" ? "none" : "grid";
+      updateOutputTabs();
+      formBody.innerHTML = "";
+
+      fieldGroups
+        .filter(group => {
+          if (activeDashboard === "injector") return group.tab === "injector";
+          return group.tab === "common" || group.tab === activeInputMode;
+        })
+        .forEach(group => {
+        const section = document.createElement("section");
+        section.className = "section";
+
+        const title = document.createElement("h2");
+        title.textContent = group.title;
+        section.append(title);
+
+        const grid = document.createElement("div");
+        grid.className = "field-grid";
+        group.fields.forEach(field => {
+          grid.append(createInput(field, formValues[field.key] ?? defaults[field.key] ?? ""));
+        });
+
+        section.append(grid);
+        formBody.append(section);
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      actions.innerHTML = `
+        <button class="btn primary" type="submit" id="calculateBtn">Berechnen</button>
+        <button class="btn" type="button" id="resetBtn">Reset</button>
+      `;
+      formBody.append(actions);
+
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        formValues = { ...defaults, ...forced };
+        renderForm(formValues);
+        calculate();
+      });
+    }
+
+    function collectConfig() {
+      updateFormValuesFromDom();
+      const forced = activeDashboard === "injector"
+        ? { chamber_source: "injector", nozzle_mode: "given_geometry" }
+        : { chamber_source: "manual", nozzle_mode: currentInputMode().nozzleMode };
+      const config = { ...defaults, ...formValues, ...forced };
+
+      uniqueFields.forEach(field => {
+        if (field.type === "segment") {
+          config[field.key] = config[field.key] ?? defaults[field.key];
+          return;
+        }
+
+        if (field.type === "number") {
+          const rawValue = config[field.key] ?? defaults[field.key];
+          const numericValue = parseNumberValue(rawValue);
+          if (!Number.isFinite(numericValue)) {
+            throw new Error(`${field.label}: Bitte einen gültigen Zahlenwert eingeben.`);
+          }
+          if (field.min !== undefined && numericValue < field.min) {
+            throw new Error(`${field.label}: Der Wert muss mindestens ${field.min} sein.`);
+          }
+          if (field.max !== undefined && numericValue > field.max) {
+            throw new Error(`${field.label}: Der Wert darf höchstens ${field.max} sein.`);
+          }
+          config[field.key] = numericValue;
+          return;
+        }
+
+        config[field.key] = String(config[field.key] ?? "").trim();
+      });
+
+      config.chamber_source = forced.chamber_source;
+      config.nozzle_mode = forced.nozzle_mode;
+      if (!Number.isFinite(config.num_points)) config.num_points = 180;
+      return config;
+    }
+
+    function renderSummary(data) {
+      const container = document.getElementById("summaryMetrics");
+      container.innerHTML = "";
+
+      summaryMetrics.forEach(metric => {
+        const item = document.createElement("div");
+        item.className = "metric";
+        const value = metric.value(data);
+        item.innerHTML = `
+          <div class="metric-label">${metric.label}</div>
+          <div class="metric-value">${formatValue(value, metric.digits)}<span class="metric-unit">${metric.unit}</span></div>
+        `;
+        container.append(item);
+      });
+    }
+
+    function renderTable(targetId, rows, data) {
+      const target = document.getElementById(targetId);
+      const tableRows = rows.map(([label, unit, getter, digits]) => {
+        const value = getter(data);
+        const rendered = typeof value === "string" ? value : formatValue(value, digits ?? 2);
+        const help = tableDescriptions[label] || "";
+        const labelHtml = help
+          ? `<span class="label-help-target" data-help="${escapeHtml(help)}">${escapeHtml(label)}</span>`
+          : escapeHtml(label);
+        return `<tr><td>${labelHtml}</td><td>${escapeHtml(rendered)}</td><td>${escapeHtml(unit)}</td></tr>`;
+      }).join("");
+
+      target.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Parameter</th><th>Wert</th><th>Einheit</th></tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      `;
+      attachHoverHelp(target);
+    }
+
+    function renderComposition(data) {
+      const target = document.getElementById("tab-thermo");
+      const composition = Object.entries(data.state.composition)
+        .map(([name, value]) => `<span class="pill">${name}<span>${formatValue(value * 100, 2)} %</span></span>`)
+        .join("");
+      const partials = Object.entries(data.state.partial_pressures || {})
+        .map(([name, value]) => `<span class="pill">${name}<span>${formatValue(value / 1e5, 3)} bar</span></span>`)
+        .join("");
+      const meta = data.state.metadata || {};
+      const modelRows = [
+        ["Modell", meta.combustion_model || "-"],
+        ["Stöchiometrie", meta.equation_stoich || "-"],
+        ["O/F stöch.", Number.isFinite(meta.stoich_of) ? formatValue(meta.stoich_of, 3) : "-"],
+        ["O/F aktuell", Number.isFinite(meta.actual_of) ? formatValue(meta.actual_of, 3) : "-"]
+      ].map(([label, value]) => {
+        const help = tableDescriptions[label] || "";
+        const labelHtml = help
+          ? `<span class="label-help-target" data-help="${escapeHtml(help)}">${escapeHtml(label)}</span>`
+          : escapeHtml(label);
+        return `<tr><td>${labelHtml}</td><td>${escapeHtml(value)}</td><td></td></tr>`;
+      }).join("");
+
+      const existing = target.innerHTML;
+      target.innerHTML = `
+        <div class="composition">${composition}</div>
+        <div class="composition">${partials}</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Reaktion</th><th>Wert</th><th></th></tr></thead>
+            <tbody>${modelRows}</tbody>
+          </table>
+        </div>
+        <br>
+        ${existing}
+      `;
+      attachHoverHelp(target);
+    }
+
+    function sortedUniqueByX(rows) {
+      const sorted = (rows || [])
+        .filter(row => Number.isFinite(row["x [m]"]))
+        .slice()
+        .sort((a, b) => a["x [m]"] - b["x [m]"]);
+      const unique = [];
+      sorted.forEach(row => {
+        const last = unique[unique.length - 1];
+        if (last && Math.abs(last["x [m]"] - row["x [m]"]) < 1e-10) {
+          unique[unique.length - 1] = row;
+        } else {
+          unique.push(row);
+        }
+      });
+      return unique;
+    }
+
+    function interpolateRowsEvery10mm(rows, fields) {
+      const source = sortedUniqueByX(rows);
+      if (!source.length) return [];
+      if (source.length === 1) return source;
+
+      const minX = source[0]["x [m]"];
+      const maxX = source[source.length - 1]["x [m]"];
+      const step = 0.01;
+      const targets = [];
+      const count = Math.floor(Math.max(maxX - minX, 0) / step);
+      for (let i = 0; i <= count; i += 1) {
+        targets.push(minX + i * step);
+      }
+      if (!targets.length || Math.abs(targets[targets.length - 1] - maxX) > 1e-7) {
+        targets.push(maxX);
+      }
+
+      let segmentIndex = 0;
+      return targets.map(targetX => {
+        while (segmentIndex < source.length - 2 && source[segmentIndex + 1]["x [m]"] < targetX) {
+          segmentIndex += 1;
+        }
+        const low = source[segmentIndex];
+        const high = source[Math.min(segmentIndex + 1, source.length - 1)];
+        const x0 = low["x [m]"];
+        const x1 = high["x [m]"];
+        const amount = Math.abs(x1 - x0) < 1e-12 ? 0 : (targetX - x0) / (x1 - x0);
+        const row = { "x [m]": targetX };
+        fields.forEach(field => {
+          const lowValue = Number(low[field]);
+          const highValue = Number(high[field]);
+          row[field] = Number.isFinite(lowValue) && Number.isFinite(highValue)
+            ? lowValue + (highValue - lowValue) * amount
+            : low[field];
+        });
+        return row;
+      });
+    }
+
+    function renderContourTable(data) {
+      const target = document.getElementById("tab-contour");
+      const sampled = interpolateRowsEvery10mm(data.contour, ["r [m]"]);
+      const rows = sampled.map(point => `
+        <tr>
+          <td>${formatValue(point["x [m]"] * 1000, 2)}</td>
+          <td>${formatValue(point["r [m]"] * 1000, 3)}</td>
+          <td>${formatValue(point["r [m]"] * 2000, 3)}</td>
+        </tr>
+      `).join("");
+
+      target.innerHTML = `
+        <div class="table-wrap scrollable">
+          <table>
+            <thead><tr>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["x [m]"])}">x [mm]</span></th>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["r [m]"])}">r [mm]</span></th>
+              <th><span class="label-help-target" data-help="Lokaler Innendurchmesser der Düse.">D [mm]</span></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+      attachHoverHelp(target);
+    }
+
+    function renderFlowTable(data) {
+      const target = document.getElementById("tab-flow");
+      const sampled = interpolateRowsEvery10mm(data.flowfield || [], ["M [-]", "p [Pa]", "T [K]", "v [m/s]"]);
+      const rows = sampled.map(point => `
+        <tr>
+          <td>${formatValue(point["x [m]"] * 1000, 2)}</td>
+          <td>${formatValue(point["M [-]"], 4)}</td>
+          <td>${formatValue(point["p [Pa]"] / 1e5, 4)}</td>
+          <td>${formatValue(point["T [K]"], 2)}</td>
+          <td>${formatValue(point["v [m/s]"], 2)}</td>
+        </tr>
+      `).join("");
+
+      target.innerHTML = `
+        <div class="table-wrap scrollable">
+          <table>
+            <thead><tr>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["x [m]"])}">x [mm]</span></th>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["Mach"])}">Mach</span></th>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["p [bar]"])}">p [bar]</span></th>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["T [K]"])}">T [K]</span></th>
+              <th><span class="label-help-target" data-help="${escapeHtml(tableDescriptions["v [m/s]"])}">v [m/s]</span></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+      attachHoverHelp(target);
+    }
+
+    function renderInjectorGeometry(injector) {
+      const streams = [
+        { label: "Kraftstoff", stream: injector.fuel, color: "#0f766e", y: 82 },
+        { label: "Oxidator", stream: injector.oxidizer, color: "#2457a6", y: 170 }
+      ];
+      const maxLength = Math.max(...streams.map(item => Number(item.stream.length) || 0), 0.001);
+      const maxDiameter = Math.max(...streams.map(item => Number(item.stream.diameter) || 0), 0.0002);
+      const width = 900;
+      const height = 260;
+      const left = 120;
+      const right = 780;
+      const axisY = 226;
+      const lengthToX = value => left + (Math.max(value, 0) / maxLength) * (right - left);
+      const diameterToHeight = value => Math.max(8, (Math.max(value, 0) / maxDiameter) * 54);
+      const ticks = [0, 0.25, 0.5, 0.75, 1].map(amount => amount * maxLength);
+
+      const streamSvg = streams.map(item => {
+        const length = Number(item.stream.length) || 0;
+        const diameter = Number(item.stream.diameter) || 0;
+        const rectWidth = Math.max(2, lengthToX(length) - left);
+        const rectHeight = diameterToHeight(diameter);
+        const y = item.y - rectHeight / 2;
+        const label = `${item.label}: d=${formatValue(diameter * 1000, 3)} mm, L=${formatValue(length * 1000, 3)} mm, L/D=${formatValue(item.stream.L_over_D, 2)}`;
+        return `
+          <text x="22" y="${item.y + 4}" class="plot-label">${escapeHtml(item.label)}</text>
+          <rect x="${left}" y="${y}" width="${rectWidth}" height="${rectHeight}" rx="3" fill="${item.color}" opacity="0.28" stroke="${item.color}" stroke-width="2"></rect>
+          <line x1="${left}" y1="${item.y}" x2="${right}" y2="${item.y}" stroke="#91a19b" stroke-dasharray="4 5"></line>
+          <line x1="${left}" y1="${y}" x2="${left - 22}" y2="${y}" class="plot-tick"></line>
+          <line x1="${left}" y1="${y + rectHeight}" x2="${left - 22}" y2="${y + rectHeight}" class="plot-tick"></line>
+          <text x="${left + 10}" y="${y - 8}" class="plot-tick-label">${escapeHtml(label)}</text>
+        `;
+      }).join("");
+
+      const tickSvg = ticks.map(value => {
+        const x = lengthToX(value);
+        return `
+          <line x1="${x}" y1="${axisY - 5}" x2="${x}" y2="${axisY + 5}" class="plot-tick"></line>
+          <text x="${x - 13}" y="${axisY + 20}" class="plot-tick-label">${formatValue(value * 1000, 1)}</text>
+        `;
+      }).join("");
+
+      return `
+        <div class="injector-visual">
+          <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Injektorgeometrie">
+            <text x="20" y="26" class="plot-label">Injektor-Lochgeometrie</text>
+            ${streamSvg}
+            <line x1="${left}" y1="${axisY}" x2="${right}" y2="${axisY}" class="plot-axis"></line>
+            ${tickSvg}
+            <text x="${(left + right) / 2 - 48}" y="${height - 12}" class="plot-label">Lochlänge L [mm]</text>
+            <text x="${left - 88}" y="47" class="plot-label">d [mm]</text>
+          </svg>
+        </div>
+      `;
+    }
+
+    function renderInjectorTable(data) {
+      const target = document.getElementById("tab-injector");
+      const injector = data.injector;
+      if (!injector) {
+        target.innerHTML = `<div class="notice active">Das Injektor-Dashboard ist nicht aktiv; diese Rechnung nutzt manuelle Kammerbedingungen.</div>`;
+        return;
+      }
+
+      const rows = [
+        ["Kammerdruck", injector.p_chamber / 1e5, "bar", 3],
+        ["Gesamt-m_dot", injector.mdot_total, "kg/s", 5],
+        ["Düsenkapazität", injector.mdot_nozzle_capacity, "kg/s", 5],
+        ["O/F real", injector.actual_of, "-", 3],
+        ["phi real", injector.phi, "-", 3],
+        ["phi Modell", injector.thermochemistry_phi ?? injector.phi, "-", 3],
+        ["Fuel d", injector.fuel.diameter * 1000, "mm", 3],
+        ["Fuel L", injector.fuel.length * 1000, "mm", 3],
+        ["Fuel L/D", injector.fuel.L_over_D, "-", 2],
+        ["Fuel A ges.", injector.fuel.area_total * 1e6, "mm²", 4],
+        ["Fuel m_dot", injector.fuel.mdot, "kg/s", 5],
+        ["Fuel v_exit", injector.fuel.velocity, "m/s", 2],
+        ["Fuel Phase", injector.fuel.phase, "", 0],
+        ["Ox d", injector.oxidizer.diameter * 1000, "mm", 3],
+        ["Ox L", injector.oxidizer.length * 1000, "mm", 3],
+        ["Ox L/D", injector.oxidizer.L_over_D, "-", 2],
+        ["Ox A ges.", injector.oxidizer.area_total * 1e6, "mm²", 4],
+        ["Ox m_dot", injector.oxidizer.mdot, "kg/s", 5],
+        ["Ox v_exit", injector.oxidizer.velocity, "m/s", 2],
+        ["Ox Phase", injector.oxidizer.phase, "", 0],
+        ["Fuel Tankmasse", injector.fuel_tank_mass_est, "kg", 3],
+        ["Ox Tankmasse", injector.oxidizer_tank_mass_est, "kg", 3],
+        ["Fuel Brenndauer", injector.fuel_burn_time_est, "s", 2],
+        ["Ox Brenndauer", injector.oxidizer_burn_time_est, "s", 2]
+      ];
+
+      const body = rows.map(([label, value, unit, digits]) => {
+        const rendered = typeof value === "string" ? value : formatValue(value, digits);
+        const help = tableDescriptions[label] || "";
+        const labelHtml = help
+          ? `<span class="label-help-target" data-help="${escapeHtml(help)}">${escapeHtml(label)}</span>`
+          : escapeHtml(label);
+        return `<tr><td>${labelHtml}</td><td>${escapeHtml(rendered)}</td><td>${escapeHtml(unit)}</td></tr>`;
+      }).join("");
+      const warningHtml = injector.warnings && injector.warnings.length
+        ? `<div class="notice active">${escapeHtml(injector.warnings.join(" "))}</div>`
+        : "";
+
+      target.innerHTML = `
+        ${warningHtml}
+        ${renderInjectorGeometry(injector)}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Parameter</th><th>Wert</th><th>Einheit</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      `;
+      attachHoverHelp(target);
+    }
+
+    function fieldInfo(key) {
+      return {
+        M: { field: "M [-]", label: "Machzahl", unit: "-", scale: value => value, color: "#0f766e" },
+        p: { field: "p [Pa]", label: "Druck", unit: "bar", scale: value => value / 1e5, color: "#2457a6" },
+        T: { field: "T [K]", label: "Temperatur", unit: "K", scale: value => value, color: "#b36b00" },
+        v: { field: "v [m/s]", label: "Geschwindigkeit", unit: "m/s", scale: value => value, color: "#a12222" }
+      }[key];
+    }
+
+    function colorRamp(value, min, max) {
+      const t = Math.max(0, Math.min(1, (value - min) / Math.max(max - min, 1e-9)));
+      const hue = 215 - 195 * t;
+      return `hsl(${hue}, 78%, 48%)`;
+    }
+
+    function drawContour(data) {
+      const svg = document.getElementById("contourSvg");
+      svg.innerHTML = "";
+
+      const points = data.contour.map(point => ({ x: point["x [m]"], r: point["r [m]"] }));
+      if (!points.length) return;
+
+      const width = 900;
+      const height = 430;
+      const padLeft = 70;
+      const padRight = 34;
+      const padTop = 30;
+      const padBottom = 58;
+      const minX = Math.min(...points.map(point => point.x));
+      const maxX = Math.max(...points.map(point => point.x));
+      const maxR = Math.max(...points.map(point => Math.abs(point.r)));
+      const xSpan = Math.max(maxX - minX, 1e-9);
+      const rSpan = Math.max(maxR * 2, 1e-9);
+
+      const sx = x => padLeft + ((x - minX) / xSpan) * (width - padLeft - padRight);
+      const sy = y => padTop + ((maxR - y) / rSpan) * (height - padTop - padBottom);
+      const upper = points.map(point => `${sx(point.x)},${sy(point.r)}`).join(" ");
+      const lower = [...points].reverse().map(point => `${sx(point.x)},${sy(-point.r)}`).join(" ");
+      const overlayKey = document.getElementById("fieldOverlay").value;
+      const overlay = fieldInfo(overlayKey);
+
+      if (overlay && data.flowfield && data.flowfield.length === points.length) {
+        const values = data.flowfield.map(row => overlay.scale(row[overlay.field]));
+        const minVal = Math.min(...values);
+        const maxVal = Math.max(...values);
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const fill = colorRamp((values[i] + values[i + 1]) / 2, minVal, maxVal);
+          const segment = svgEl("polygon", {
+            points: [
+              `${sx(points[i].x)},${sy(points[i].r)}`,
+              `${sx(points[i + 1].x)},${sy(points[i + 1].r)}`,
+              `${sx(points[i + 1].x)},${sy(-points[i + 1].r)}`,
+              `${sx(points[i].x)},${sy(-points[i].r)}`
+            ].join(" "),
+            fill,
+            opacity: "0.72",
+            stroke: fill,
+            "stroke-width": "0.5"
+          });
+          svg.append(segment);
+        }
+
+        const legend = svgEl("text", { x: width - 260, y: 22, fill: "#5f6d68", "font-size": "12" });
+        legend.textContent = `${overlay.label}: ${formatValue(minVal, 2)} ... ${formatValue(maxVal, 2)} ${overlay.unit}`;
+        svg.append(legend);
+      } else {
+        const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        polygon.setAttribute("class", "contour-fill");
+        polygon.setAttribute("points", `${upper} ${lower}`);
+        svg.append(polygon);
+      }
+
+      drawXYAxes(svg, {
+        width, height, padLeft, padRight, padTop, padBottom,
+        xMin: minX, xMax: maxX, yMin: -maxR, yMax: maxR,
+        sx, sy, xLabel: "x [mm]", yLabel: "r [mm]",
+        xDigits: 0, yDigits: 1
+      });
+      svg.append(svgEl("path", { d: `M ${upper} L ${lower} Z`, class: "contour-outline" }));
+
+      const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      axis.setAttribute("class", "axis");
+      axis.setAttribute("x1", padLeft);
+      axis.setAttribute("x2", width - padRight);
+      axis.setAttribute("y1", sy(0));
+      axis.setAttribute("y2", sy(0));
+      svg.append(axis);
+
+      const throat = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      const throatX = sx(data.geometry.L_conv);
+      throat.setAttribute("class", "throat-line");
+      throat.setAttribute("x1", throatX);
+      throat.setAttribute("x2", throatX);
+      throat.setAttribute("y1", padTop);
+      throat.setAttribute("y2", height - padBottom);
+      svg.append(throat);
+    }
+
+    function svgEl(tag, attrs = {}) {
+      const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+      return node;
+    }
+
+    function niceTicks(min, max, maxTicks = 6) {
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return [min || 0];
+      const span = Math.abs(max - min);
+      const rawStep = span / Math.max(maxTicks - 1, 1);
+      const power = 10 ** Math.floor(Math.log10(rawStep));
+      const factor = [1, 2, 5, 10].find(item => item * power >= rawStep) || 10;
+      const step = factor * power;
+      const first = Math.ceil(min / step) * step;
+      const ticks = [];
+      for (let value = first; value <= max + step * 0.5; value += step) {
+        ticks.push(Math.abs(value) < step * 1e-8 ? 0 : value);
+      }
+      if (!ticks.length) ticks.push(min, max);
+      return ticks;
+    }
+
+    function drawXYAxes(svg, config) {
+      const {
+        width, height, padLeft, padRight, padTop, padBottom,
+        xMin, xMax, yMin, yMax, sx, sy, xLabel, yLabel,
+        xScale = 1000, yScale = 1000, xDigits = 0, yDigits = 1
+      } = config;
+      const axisY = height - padBottom;
+      const axisX = padLeft;
+      svg.append(svgEl("line", { x1: padLeft, y1: axisY, x2: width - padRight, y2: axisY, class: "plot-axis" }));
+      svg.append(svgEl("line", { x1: axisX, y1: padTop, x2: axisX, y2: axisY, class: "plot-axis" }));
+
+      niceTicks(xMin, xMax, 6).forEach((value, index) => {
+        const x = sx(value);
+        svg.append(svgEl("line", { x1: x, y1: axisY, x2: x, y2: axisY + 5, class: "plot-tick" }));
+        const text = svgEl("text", { x: x - 15, y: axisY + 18 + (index % 2) * 12, class: "plot-tick-label" });
+        text.textContent = formatValue(value * xScale, xDigits);
+        svg.append(text);
+      });
+
+      niceTicks(yMin, yMax, 5).forEach(value => {
+        const y = sy(value);
+        svg.append(svgEl("line", { x1: axisX - 5, y1: y, x2: axisX, y2: y, class: "plot-tick" }));
+        const text = svgEl("text", { x: Math.max(8, axisX - 58), y: y + 4, class: "plot-tick-label" });
+        text.textContent = formatValue(value * yScale, yDigits);
+        svg.append(text);
+      });
+
+      const xText = svgEl("text", { x: (padLeft + width - padRight) / 2 - 28, y: height - 12, class: "plot-label" });
+      xText.textContent = xLabel;
+      svg.append(xText);
+
+      const yText = svgEl("text", {
+        x: 16,
+        y: (padTop + axisY) / 2 + 38,
+        class: "plot-label",
+        transform: `rotate(-90 16 ${(padTop + axisY) / 2 + 38})`
+      });
+      yText.textContent = yLabel;
+      svg.append(yText);
+    }
+
+    function drawXAxis(svg, config) {
+      const { width, height, padLeft, padRight, padBottom, xMin, xMax, sx, label } = config;
+      const axisY = height - padBottom;
+      svg.append(svgEl("line", { x1: padLeft, y1: axisY, x2: width - padRight, y2: axisY, class: "plot-axis" }));
+      niceTicks(xMin, xMax, 6).forEach((value, index) => {
+        const x = sx(value);
+        svg.append(svgEl("line", { x1: x, y1: axisY, x2: x, y2: axisY + 5, class: "plot-tick" }));
+        const text = svgEl("text", { x: x - 15, y: axisY + 18 + (index % 2) * 12, class: "plot-tick-label" });
+        text.textContent = formatValue(value * 1000, 0);
+        svg.append(text);
+      });
+      const axisLabel = svgEl("text", { x: (padLeft + width - padRight) / 2 - 28, y: height - 12, class: "plot-label" });
+      axisLabel.textContent = label;
+      svg.append(axisLabel);
+    }
+
+    function draw3DContour(data) {
+      const svg = document.getElementById("contourSvg");
+      svg.innerHTML = "";
+
+      const points = data.contour.map(point => ({ x: point["x [m]"], r: point["r [m]"] }));
+      if (!points.length) return;
+
+      const width = 900;
+      const height = 430;
+      const view = document.getElementById("viewMode").value;
+      const padX = view === "front" ? 320 : 70;
+      const minX = Math.min(...points.map(point => point.x));
+      const maxX = Math.max(...points.map(point => point.x));
+      const maxR = Math.max(...points.map(point => point.r));
+      const xSpan = Math.max(maxX - minX, 1e-9);
+      const scaleR = (view === "front" ? 135 : 112) / Math.max(maxR, 1e-9);
+
+      const sampled = points.filter((_, index) => index % Math.max(1, Math.floor(points.length / 28)) === 0);
+      if (sampled[sampled.length - 1] !== points[points.length - 1]) sampled.push(points[points.length - 1]);
+
+      if (view === "front") {
+        const exit = points[points.length - 1];
+        const throat = points.reduce((best, point) => point.r < best.r ? point : best, points[0]);
+        const cx = width / 2;
+        const cy = height / 2;
+        const exitR = exit.r * scaleR;
+        svg.append(svgEl("line", { x1: cx - exitR, y1: cy, x2: cx + exitR, y2: cy, class: "plot-axis" }));
+        svg.append(svgEl("line", { x1: cx, y1: cy - exitR, x2: cx, y2: cy + exitR, class: "plot-axis" }));
+        svg.append(svgEl("circle", { cx, cy, r: exitR, fill: "rgba(15,118,110,0.13)", stroke: "#0f766e", "stroke-width": "3" }));
+        svg.append(svgEl("circle", { cx, cy, r: throat.r * scaleR, fill: "none", stroke: "#b36b00", "stroke-width": "2", "stroke-dasharray": "6 5" }));
+        const dLabel = svgEl("text", { x: cx + exitR + 16, y: cy + 4, class: "plot-label" });
+        dLabel.textContent = `D_e ${formatValue(exit.r * 2000, 2)} mm`;
+        svg.append(dLabel);
+        const text = svgEl("text", { x: cx - 130, y: cy + exitR + 32, fill: "#5f6d68", "font-size": "13" });
+        text.textContent = "Frontansicht: Austritt, gestrichelt = Hals";
+        svg.append(text);
+        return;
+      }
+
+      const sx = x => padX + ((x - minX) / xSpan) * (width - padX * 2);
+      const centers = sampled.map(point => {
+        const nx = (point.x - minX) / xSpan;
+        const skew = view === "iso" ? (nx - 0.5) * 70 : 0;
+        const ellipseFactor = view === "iso" ? 0.42 : 0.24;
+        return {
+          cx: padX + nx * (width - padX * 2),
+          cy: height / 2 + skew,
+          rx: point.r * scaleR,
+          ry: point.r * scaleR * ellipseFactor
+        };
+      });
+
+      const topPath = centers.map((center, index) => `${index === 0 ? "M" : "L"} ${center.cx} ${center.cy - center.ry}`).join(" ");
+      const bottomPath = centers.slice().reverse().map(center => `L ${center.cx} ${center.cy + center.ry}`).join(" ");
+      svg.append(svgEl("path", {
+        d: `${topPath} ${bottomPath} Z`,
+        fill: "rgba(15,118,110,0.18)",
+        stroke: "#0f766e",
+        "stroke-width": "2"
+      }));
+
+      const highlight = centers.map((center, index) => `${index === 0 ? "M" : "L"} ${center.cx} ${center.cy - center.ry * 0.35}`).join(" ");
+      svg.append(svgEl("path", { d: highlight, fill: "none", stroke: "rgba(255,255,255,0.9)", "stroke-width": "2" }));
+
+      centers.forEach(center => {
+        svg.append(svgEl("ellipse", {
+          cx: center.cx,
+          cy: center.cy,
+          rx: center.rx,
+          ry: center.ry,
+          fill: "none",
+          stroke: "#115e59",
+          "stroke-width": "1.1",
+          opacity: "0.55"
+        }));
+      });
+
+      const centerLine = centers.map((center, index) => `${index === 0 ? "M" : "L"} ${center.cx} ${center.cy}`).join(" ");
+      svg.append(svgEl("path", { d: centerLine, fill: "none", stroke: "#5f6d68", "stroke-width": "1", "stroke-dasharray": "5 5" }));
+      drawXAxis(svg, {
+        width,
+        height,
+        padLeft: padX,
+        padRight: padX,
+        padBottom: 58,
+        xMin: minX,
+        xMax: maxX,
+        sx,
+        label: "x [mm]"
+      });
+      const dAxisX = 34;
+      const dAxisTop = height / 2 - 70;
+      const dAxisBottom = height / 2 + 70;
+      svg.append(svgEl("line", { x1: dAxisX, y1: dAxisTop, x2: dAxisX, y2: dAxisBottom, class: "plot-axis" }));
+      svg.append(svgEl("line", { x1: dAxisX - 5, y1: dAxisTop, x2: dAxisX + 5, y2: dAxisTop, class: "plot-tick" }));
+      svg.append(svgEl("line", { x1: dAxisX - 5, y1: dAxisBottom, x2: dAxisX + 5, y2: dAxisBottom, class: "plot-tick" }));
+      const dText = svgEl("text", { x: dAxisX + 10, y: dAxisTop - 8, class: "plot-label" });
+      dText.textContent = `D max ${formatValue(maxR * 2000, 2)} mm`;
+      svg.append(dText);
+    }
+
+    function drawSection(data) {
+      const svg = document.getElementById("contourSvg");
+      svg.innerHTML = "";
+
+      const points = data.contour.map(point => ({ x: point["x [m]"], r: point["r [m]"] }));
+      if (!points.length) return;
+
+      const width = 900;
+      const height = 430;
+      const padLeft = 70;
+      const padRight = 34;
+      const padTop = 30;
+      const padBottom = 58;
+      const minX = Math.min(...points.map(point => point.x));
+      const maxX = Math.max(...points.map(point => point.x));
+      const maxR = Math.max(...points.map(point => point.r));
+      const sx = x => padLeft + ((x - minX) / Math.max(maxX - minX, 1e-9)) * (width - padLeft - padRight);
+      const sy = r => padTop + ((maxR - r) / Math.max(maxR, 1e-9)) * (height - padTop - padBottom);
+      const upper = points.map((point, index) => `${index === 0 ? "M" : "L"} ${sx(point.x)} ${sy(point.r)}`).join(" ");
+      const axisY = sy(0);
+      const bottom = points.slice().reverse().map(point => `L ${sx(point.x)} ${axisY}`).join(" ");
+
+      drawXYAxes(svg, {
+        width, height, padLeft, padRight, padTop, padBottom,
+        xMin: minX, xMax: maxX, yMin: 0, yMax: maxR,
+        sx, sy, xLabel: "x [mm]", yLabel: "r [mm]",
+        xDigits: 0, yDigits: 1
+      });
+      svg.append(svgEl("path", {
+        d: `${upper} ${bottom} Z`,
+        fill: "rgba(15,118,110,0.18)",
+        stroke: "#0f766e",
+        "stroke-width": "2"
+      }));
+      svg.append(svgEl("line", { x1: padLeft, y1: axisY, x2: width - padRight, y2: axisY, stroke: "#5f6d68", "stroke-dasharray": "6 5" }));
+      const throatX = sx(data.geometry.L_conv);
+      svg.append(svgEl("line", { x1: throatX, y1: padTop, x2: throatX, y2: axisY, class: "throat-line" }));
+      const text = svgEl("text", { x: padLeft + 8, y: padTop + 18, fill: "#5f6d68", "font-size": "13" });
+      text.textContent = "Halbschnitt durch die rotationssymmetrische Düse";
+      svg.append(text);
+    }
+
+    function drawMultiFieldPlot(data) {
+      const svg = document.getElementById("contourSvg");
+      svg.innerHTML = "";
+
+      const rows = data.flowfield || [];
+      if (!rows.length) return;
+
+      const width = 900;
+      const height = 430;
+      const padLeft = 82;
+      const padRight = 250;
+      const padTop = 34;
+      const padBottom = 58;
+      const xs = rows.map(row => row["x [m]"]);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const sx = x => padLeft + ((x - minX) / Math.max(maxX - minX, 1e-9)) * (width - padLeft - padRight);
+      const sy = normalized => height - padBottom - normalized * (height - padTop - padBottom);
+      const plotRight = width - padRight;
+
+      drawXAxis(svg, { width, height, padLeft, padRight, padBottom, xMin: minX, xMax: maxX, sx, label: "x [mm]" });
+
+      const series = ["M", "p", "T", "v"].map(key => ({ key, ...fieldInfo(key) }));
+      series.forEach((item, seriesIndex) => {
+        const values = rows.map(row => item.scale(row[item.field]));
+        const minY = Math.min(...values);
+        const maxY = Math.max(...values);
+        const axisX = seriesIndex === 0 ? padLeft : plotRight + 30 + (seriesIndex - 1) * 66;
+        const path = rows.map((row, index) => {
+          const value = item.scale(row[item.field]);
+          const normalized = (value - minY) / Math.max(maxY - minY, 1e-9);
+          return `${index === 0 ? "M" : "L"} ${sx(row["x [m]"])} ${sy(normalized)}`;
+        }).join(" ");
+        svg.append(svgEl("path", { d: path, fill: "none", stroke: item.color, "stroke-width": "2.6" }));
+
+        svg.append(svgEl("line", { x1: axisX, y1: padTop, x2: axisX, y2: height - padBottom, stroke: item.color, "stroke-width": "1.4" }));
+        svg.append(svgEl("line", { x1: axisX - 5, y1: padTop, x2: axisX + 5, y2: padTop, stroke: item.color, "stroke-width": "1.2" }));
+        svg.append(svgEl("line", { x1: axisX - 5, y1: height - padBottom, x2: axisX + 5, y2: height - padBottom, stroke: item.color, "stroke-width": "1.2" }));
+        const maxText = svgEl("text", { x: axisX + 7, y: padTop + 4, fill: item.color, "font-size": "10", "font-weight": "650" });
+        maxText.textContent = formatValue(maxY, 2);
+        svg.append(maxText);
+        const minText = svgEl("text", { x: axisX + 7, y: height - padBottom + 4, fill: item.color, "font-size": "10", "font-weight": "650" });
+        minText.textContent = formatValue(minY, 2);
+        svg.append(minText);
+        const label = svgEl("text", { x: axisX - 12, y: padTop - 11, fill: item.color, "font-size": "11", "font-weight": "750" });
+        label.textContent = `${item.label} [${item.unit}]`;
+        svg.append(label);
+      });
+
+      const throatX = sx(data.geometry.L_conv);
+      svg.append(svgEl("line", { x1: throatX, y1: padTop, x2: throatX, y2: height - padBottom, class: "throat-line" }));
+    }
+
+    function drawFieldPlot(data, fieldKey, label, unit, scale = value => value) {
+      const svg = document.getElementById("contourSvg");
+      svg.innerHTML = "";
+
+      const rows = data.flowfield || [];
+      if (!rows.length) return;
+
+      const width = 900;
+      const height = 360;
+      const padLeft = 70;
+      const padRight = 26;
+      const padTop = 28;
+      const padBottom = 46;
+      const xs = rows.map(row => row["x [m]"]);
+      const ys = rows.map(row => scale(row[fieldKey]));
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const xSpan = Math.max(maxX - minX, 1e-9);
+      const ySpan = Math.max(maxY - minY, 1e-9);
+      const sx = x => padLeft + ((x - minX) / xSpan) * (width - padLeft - padRight);
+      const sy = y => height - padBottom - ((y - minY) / ySpan) * (height - padTop - padBottom);
+
+      drawXYAxes(svg, {
+        width, height, padLeft, padRight, padTop, padBottom,
+        xMin: minX, xMax: maxX, yMin: minY, yMax: maxY,
+        sx, sy, xLabel: "x [mm]", yLabel: `${label} [${unit}]`,
+        xDigits: 0, yDigits: 2, yScale: 1
+      });
+
+      const path = rows.map((row, index) => {
+        const x = sx(row["x [m]"]);
+        const y = sy(scale(row[fieldKey]));
+        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+      }).join(" ");
+      svg.append(svgEl("path", { d: path, fill: "none", stroke: "#0f766e", "stroke-width": "3" }));
+
+      const throatX = sx(data.geometry.L_conv);
+      svg.append(svgEl("line", { x1: throatX, y1: padTop, x2: throatX, y2: height - padBottom, class: "throat-line" }));
+
+      const labelText = svgEl("text", { x: padLeft, y: 18, fill: "#5f6d68", "font-size": "13" });
+      labelText.textContent = `${label} [${unit}]`;
+      svg.append(labelText);
+
+      const xText = svgEl("text", { x: padLeft, y: height - 14, fill: "#5f6d68", "font-size": "12" });
+      xText.textContent = `x: ${formatValue(minX * 1000, 1)} ... ${formatValue(maxX * 1000, 1)} mm`;
+      svg.append(xText);
+
+      const rangeText = svgEl("text", { x: width - 170, y: 18, fill: "#5f6d68", "font-size": "12" });
+      rangeText.textContent = `${formatValue(minY, 2)} ... ${formatValue(maxY, 2)}`;
+      svg.append(rangeText);
+    }
+
+    function drawSelectedPlot() {
+      if (!currentResult) return;
+
+      const mode = document.getElementById("plotMode").value;
+      const title = document.getElementById("plotTitle");
+      const fieldSelect = document.getElementById("fieldOverlay");
+      const viewSelect = document.getElementById("viewMode");
+      fieldSelect.disabled = mode !== "contour";
+      viewSelect.disabled = mode !== "solid3d";
+
+      if (mode === "solid3d") {
+        title.textContent = "3D-Ansicht";
+        draw3DContour(currentResult);
+      } else if (mode === "section") {
+        title.textContent = "Schnitt";
+        drawSection(currentResult);
+      } else if (mode === "multi") {
+        title.textContent = "Verläufe";
+        drawMultiFieldPlot(currentResult);
+      } else {
+        title.textContent = "Kontur";
+        drawContour(currentResult);
+      }
+    }
+
+    function renderNotice(data) {
+      notice.className = "notice";
+      notice.textContent = "";
+
+      if (data.warnings && data.warnings.length) {
+        notice.classList.add("active");
+        notice.textContent = data.warnings.join(" ");
+      }
+      if (data.injector && data.injector.warnings && data.injector.warnings.length) {
+        notice.classList.add("active");
+        notice.textContent = [notice.textContent, data.injector.warnings.join(" ")].filter(Boolean).join(" ");
+      }
+    }
+
+    function renderOutput(data) {
+      currentResult = data;
+      renderSummary(data);
+      renderTable("tab-thermo", tabTables.thermo, data);
+      renderComposition(data);
+      renderTable("tab-performance", tabTables.performance, data);
+      renderTable("tab-geometry", tabTables.geometry, data);
+      renderInjectorTable(data);
+      renderContourTable(data);
+      renderFlowTable(data);
+      drawSelectedPlot();
+      renderNotice(data);
+    }
+
+    async function calculate() {
+      const button = document.getElementById("calculateBtn");
+      if (button) button.disabled = true;
+      setStatus("Rechnet");
+
+      try {
+        const response = await fetch("/api/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(collectConfig())
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Berechnung fehlgeschlagen");
+
+        renderOutput(data);
+        setStatus("Aktuell");
+      } catch (error) {
+        notice.className = "notice active error";
+        notice.textContent = error.message;
+        setStatus("Fehler", "error");
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function downloadCsv() {
+      if (!currentResult) return;
+
+      const rows = currentResult.contour.map(point => `${point["x [m]"]},${point["r [m]"]}`);
+      const csv = `x [m],r [m]\n${rows.join("\n")}\n`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `nozzle_contour_${currentResult.inputs.mode}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        setActiveOutputTab(tab.dataset.tab);
+      });
+    });
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      calculate();
+    });
+
+    document.getElementById("downloadCsv").addEventListener("click", downloadCsv);
+    document.getElementById("plotMode").addEventListener("change", drawSelectedPlot);
+    document.getElementById("fieldOverlay").addEventListener("change", drawSelectedPlot);
+    document.getElementById("viewMode").addEventListener("change", drawSelectedPlot);
+
+    fetch("/api/defaults")
+      .then(response => response.json())
+      .then(data => {
+        defaults = { ...data.defaults, num_points: 180 };
+        activeDashboard = defaults.chamber_source === "injector" ? "injector" : "nozzle";
+        activeInputMode = defaults.nozzle_mode === "given_geometry" ? "exit" : "design";
+        formValues = { ...defaults, nozzle_mode: currentInputMode().nozzleMode };
+        renderForm(formValues);
+        calculate();
+      })
+      .catch(error => {
+        notice.className = "notice active error";
+        notice.textContent = error.message;
+        setStatus("Fehler", "error");
+      });
+  </script>
+</body>
+</html>
