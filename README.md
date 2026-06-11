@@ -466,18 +466,3 @@ T_in = 300 K
 p_amb = 101325 Pa
 mdot = 0.1 kg/s
 ```
-
-## Geplante Verbesserungen
-
-Sinnvolle nächste Entwicklungsschritte:
-
-- Achsen mit Einheiten in allen Kontur- und Profilplots
-- bessere Skalierung der Düsenvisualisierung
-- scrollbare Tabellen für Kontur- und Profilwerte
-- Ausgabe in festen 10-mm-Schritten entlang der Düse
-- Injektorgeometrie im Injektor-Dashboard visualisieren
-- Lochlänge und L/D-Verhältnis für Injektorbohrungen ergänzen
-- Injektor-Tab im reinen Düsendashboard deaktivieren
-- robustere Behandlung der Enthalpie-Nullstellen-Warnung
-- erweiterter CSV-Export für Profile und Injektordaten
-- Validierung anhand bekannter Referenzfälle
