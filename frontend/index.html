@@ -65,6 +65,56 @@
       backdrop-filter: blur(12px);
     }
 
+    .run-indicator {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(280px, calc(100vw - 240px));
+      min-width: 180px;
+      height: 28px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transform: translate(-50%, -50%);
+      border: 1px solid #f0cf8e;
+      border-radius: 999px;
+      background: #fff7e8;
+      color: #875100;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(154, 91, 0, 0.14);
+    }
+
+    .run-indicator.active {
+      display: flex;
+      animation: runPulse 900ms ease-in-out infinite alternate;
+    }
+
+    .run-indicator span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .run-indicator::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 42%;
+      background: linear-gradient(90deg, transparent, rgba(15, 118, 110, 0.32), transparent);
+      animation: runSweep 1.05s linear infinite;
+    }
+
+    @keyframes runSweep {
+      from { transform: translateX(-120%); }
+      to { transform: translateX(260%); }
+    }
+
+    @keyframes runPulse {
+      from { opacity: 0.78; }
+      to { opacity: 1; }
+    }
+
     h1 {
       margin: 0;
       font-size: 18px;
@@ -89,6 +139,11 @@
 
     .status[data-state="error"] .status-dot {
       background: var(--error);
+    }
+
+    .status[data-state="busy"] .status-dot {
+      background: var(--warning);
+      animation: runPulse 650ms ease-in-out infinite alternate;
     }
 
     .layout {
@@ -387,10 +442,23 @@
 
     .actions {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
       padding-top: 12px;
       border-top: 1px solid var(--line);
+    }
+
+    .config-actions {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr);
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .config-actions input,
+    .config-actions select {
+      height: 36px;
     }
 
     .btn {
@@ -417,6 +485,58 @@
     .btn:disabled {
       cursor: wait;
       opacity: 0.72;
+    }
+
+    .highlight-row td {
+      border-bottom-color: rgba(23, 33, 29, 0.08);
+      font-weight: 720;
+    }
+
+    .highlight-info td {
+      background: #eaf2ff;
+    }
+
+    .highlight-good td {
+      background: #e8f6ee;
+    }
+
+    .highlight-warn td {
+      background: #fff4db;
+    }
+
+    .highlight-danger td {
+      background: #fee7e7;
+    }
+
+    .value-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 780;
+      line-height: 1.2;
+    }
+
+    .chip-info {
+      background: #dbeafe;
+      color: #1d4f91;
+    }
+
+    .chip-good {
+      background: #d9f1e2;
+      color: #17613d;
+    }
+
+    .chip-warn {
+      background: #ffe7b2;
+      color: #875100;
+    }
+
+    .chip-danger {
+      background: #ffd6d6;
+      color: #941b1b;
     }
 
     .output-stack {
@@ -703,12 +823,18 @@
         flex-direction: column;
       }
 
+      .run-indicator {
+        top: calc(100% + 8px);
+        width: min(280px, calc(100vw - 24px));
+      }
+
       .layout {
         padding: 10px;
       }
 
       .field-grid,
       .actions,
+      .config-actions,
       .metrics {
         grid-template-columns: 1fr;
       }
@@ -728,6 +854,9 @@
   <div class="app">
     <header>
       <h1>Düsenrechner</h1>
+      <div class="run-indicator" id="runIndicator" aria-hidden="true">
+        <span>Rechnung läuft</span>
+      </div>
       <div class="status" id="status" data-state="ready">
         <span class="status-dot" aria-hidden="true"></span>
         <span id="statusText">Bereit</span>
@@ -992,7 +1121,7 @@
         ["Dichte", "kg/m³", data => data.state.rho, 4],
         ["R_mix", "J/(kg*K)", data => data.state.R_spec, 2],
         ["Molare Masse", "kg/kmol", data => data.state.M_w, 3],
-        ["Gamma", "-", data => data.state.gamma, 4],
+        ["Kappa", "-", data => data.state.kappa, 4],
         ["cp", "J/(kg*K)", data => data.state.cp, 2],
         ["Z", "-", data => data.state.Z, 4],
         ["Schallgeschw.", "m/s", data => data.state.a, 2]
@@ -1034,7 +1163,7 @@
       "Dichte": "Gasdichte im Kammerzustand aus idealer Gasgleichung.",
       "R_mix": "Spezifische Gaskonstante der Produkt- oder Kaltgasmischung.",
       "Molare Masse": "Gemittelte molare Masse der Gaszusammensetzung.",
-      "Gamma": "Isentropenexponent cp/cv, wichtig für Mach-, Druck- und Temperaturbeziehungen.",
+      "Kappa": "Isentropenexponent cp/cv, wichtig für Mach-, Druck- und Temperaturbeziehungen.",
       "cp": "Spezifische Wärmekapazität bei konstantem Druck.",
       "Z": "Kompressibilitätsfaktor; aktuell 1.0 im idealen Gasmodell.",
       "Schallgeschw.": "Schallgeschwindigkeit im Kammerzustand.",
@@ -1101,6 +1230,7 @@
     let activeDashboard = "nozzle";
     let activeInputMode = "design";
     let currentResult = null;
+    let savedConfigs = [];
     const formBody = document.getElementById("formBody");
     const form = document.getElementById("configForm");
     const dashboardTabs = document.getElementById("dashboardTabs");
@@ -1109,10 +1239,13 @@
     const notice = document.getElementById("notice");
     const statusEl = document.getElementById("status");
     const statusText = document.getElementById("statusText");
+    const runIndicator = document.getElementById("runIndicator");
 
     function setStatus(text, state = "ready") {
       statusText.textContent = text;
       statusEl.dataset.state = state;
+      runIndicator.classList.toggle("active", state === "busy");
+      runIndicator.setAttribute("aria-hidden", String(state !== "busy"));
     }
 
     function formatValue(value, digits = 2) {
@@ -1218,6 +1351,7 @@
             formValues.nozzle_mode = currentInputMode().nozzleMode;
           }
           renderForm(formValues);
+          setInjectorPendingState();
           calculate();
         });
         dashboardTabs.append(button);
@@ -1269,6 +1403,12 @@
       if (!injectorEnabled && injectorTab.getAttribute("aria-selected") === "true") {
         setActiveOutputTab("thermo");
       }
+    }
+
+    function setInjectorPendingState() {
+      const target = document.getElementById("tab-injector");
+      if (!target || activeDashboard !== "injector") return;
+      target.innerHTML = `<div class="notice active">Injektor-Rechnung läuft. Die Werte werden nach Abschluss der Berechnung aktualisiert.</div>`;
     }
 
     function updateFormValuesFromDom() {
@@ -1427,6 +1567,14 @@
       actions.innerHTML = `
         <button class="btn primary" type="submit" id="calculateBtn">Berechnen</button>
         <button class="btn" type="button" id="resetBtn">Reset</button>
+        <div class="config-actions">
+          <input id="configName" type="text" placeholder="Konfigurationsname" autocomplete="off">
+          <select id="configSelect" aria-label="Gespeicherte Konfiguration">
+            <option value="">Konfiguration laden...</option>
+          </select>
+          <button class="btn" type="button" id="saveConfigBtn">Speichern</button>
+          <button class="btn" type="button" id="loadConfigBtn">Laden</button>
+        </div>
       `;
       formBody.append(actions);
 
@@ -1435,6 +1583,9 @@
         renderForm(formValues);
         calculate();
       });
+      document.getElementById("saveConfigBtn").addEventListener("click", saveCurrentConfig);
+      document.getElementById("loadConfigBtn").addEventListener("click", loadSelectedConfig);
+      renderConfigOptions();
     }
 
     function collectConfig() {
@@ -1475,6 +1626,86 @@
       return config;
     }
 
+    function renderConfigOptions() {
+      const select = document.getElementById("configSelect");
+      if (!select) return;
+      const selected = select.value;
+      const options = savedConfigs.map(item => {
+        const suffix = item.dashboard === "injector" ? "Düse + Injektor" : "Düse";
+        return `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${suffix})</option>`;
+      }).join("");
+      select.innerHTML = `<option value="">Konfiguration laden...</option>${options}`;
+      if (savedConfigs.some(item => item.id === selected)) select.value = selected;
+    }
+
+    async function refreshConfigList() {
+      const response = await fetch("/api/configs");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Konfigurationen konnten nicht geladen werden");
+      savedConfigs = data.configs || [];
+      renderConfigOptions();
+    }
+
+    function applyLoadedConfig(config, name = "") {
+      formValues = { ...defaults, ...config };
+      activeDashboard = formValues.chamber_source === "injector" ? "injector" : "nozzle";
+      activeInputMode = formValues.nozzle_mode === "given_geometry" ? "exit" : "design";
+      renderForm(formValues);
+      const nameInput = document.getElementById("configName");
+      if (nameInput) nameInput.value = name;
+      calculate();
+    }
+
+    async function saveCurrentConfig() {
+      const nameInput = document.getElementById("configName");
+      const name = (nameInput?.value || "").trim();
+      if (!name) {
+        notice.className = "notice active error";
+        notice.textContent = "Bitte zuerst einen Namen für die Konfiguration eingeben.";
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/configs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, config: collectConfig() })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Konfiguration konnte nicht gespeichert werden");
+        await refreshConfigList();
+        const select = document.getElementById("configSelect");
+        if (select) select.value = data.id;
+        setStatus("Konfiguration gespeichert");
+      } catch (error) {
+        notice.className = "notice active error";
+        notice.textContent = error.message;
+        setStatus("Fehler", "error");
+      }
+    }
+
+    async function loadSelectedConfig() {
+      const select = document.getElementById("configSelect");
+      const configId = select?.value || "";
+      if (!configId) {
+        notice.className = "notice active error";
+        notice.textContent = "Bitte eine gespeicherte Konfiguration auswählen.";
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/configs/${encodeURIComponent(configId)}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Konfiguration konnte nicht geladen werden");
+        applyLoadedConfig(data.config, data.name || configId);
+        setStatus("Konfiguration geladen");
+      } catch (error) {
+        notice.className = "notice active error";
+        notice.textContent = error.message;
+        setStatus("Fehler", "error");
+      }
+    }
+
     function renderSummary(data) {
       const container = document.getElementById("summaryMetrics");
       container.innerHTML = "";
@@ -1491,16 +1722,67 @@
       });
     }
 
+    function highlightFor(label, value, data) {
+      const numeric = Number(value);
+      if (["p_c", "Kammerdruck", "Massenstrom effektiv", "Gesamt-m_dot", "Schub", "Austritts-Mach"].includes(label)) {
+        return "info";
+      }
+      if (label === "Choked") return value === "Ja" ? "good" : "danger";
+      if (label === "p_exit" && data?.inputs?.p_amb) {
+        const ratio = numeric / data.inputs.p_amb;
+        if (ratio > 1.25 || ratio < 0.8) return "warn";
+        return "good";
+      }
+      if (label === "Kappa" && Number.isFinite(numeric)) {
+        return numeric < 1.05 || numeric > 1.7 ? "warn" : "good";
+      }
+      if (label === "T_c" && Number.isFinite(numeric)) {
+        if (numeric > 3600) return "warn";
+        if (numeric > 1200) return "info";
+      }
+      if (label === "Düsenkapazität" && data?.injector) {
+        const diff = Math.abs(data.injector.mdot_nozzle_capacity - data.injector.mdot_total) / Math.max(data.injector.mdot_total, 1e-12);
+        return diff > 0.08 ? "warn" : "good";
+      }
+      if (label === "phi real" && Number.isFinite(numeric)) {
+        if (numeric < 0.2 || numeric > 5) return "danger";
+        if (numeric < 0.5 || numeric > 2) return "warn";
+        return "good";
+      }
+      if (label === "phi Modell" && data?.injector && Number.isFinite(numeric)) {
+        return Math.abs(numeric - data.injector.phi) > 1e-3 ? "warn" : "good";
+      }
+      if (label === "O/F real") return "info";
+      if (label === "Fuel Phase" || label === "Ox Phase") {
+        const phase = String(value).toLowerCase();
+        if (phase.includes("two")) return "warn";
+        if (phase.includes("supercritical")) return "warn";
+        if (phase.includes("gas")) return "info";
+        if (phase.includes("liquid")) return "good";
+        return "warn";
+      }
+      if (label.includes("Brenndauer") && Number.isFinite(numeric)) {
+        return numeric < 2 ? "danger" : numeric < 10 ? "warn" : "good";
+      }
+      return "";
+    }
+
+    function highlightedValueHtml(rendered, level) {
+      const safe = escapeHtml(rendered);
+      return level ? `<span class="value-chip chip-${level}">${safe}</span>` : safe;
+    }
+
     function renderTable(targetId, rows, data) {
       const target = document.getElementById(targetId);
       const tableRows = rows.map(([label, unit, getter, digits]) => {
         const value = getter(data);
         const rendered = typeof value === "string" ? value : formatValue(value, digits ?? 2);
+        const level = highlightFor(label, value, data);
         const help = tableDescriptions[label] || "";
         const labelHtml = help
           ? `<span class="label-help-target" data-help="${escapeHtml(help)}">${escapeHtml(label)}</span>`
           : escapeHtml(label);
-        return `<tr><td>${labelHtml}</td><td>${escapeHtml(rendered)}</td><td>${escapeHtml(unit)}</td></tr>`;
+        return `<tr class="${level ? `highlight-row highlight-${level}` : ""}"><td>${labelHtml}</td><td>${highlightedValueHtml(rendered, level)}</td><td>${escapeHtml(unit)}</td></tr>`;
       }).join("");
 
       target.innerHTML = `
@@ -1723,7 +2005,10 @@
       const target = document.getElementById("tab-injector");
       const injector = data.injector;
       if (!injector) {
-        target.innerHTML = `<div class="notice active">Das Injektor-Dashboard ist nicht aktiv; diese Rechnung nutzt manuelle Kammerbedingungen.</div>`;
+        const expectsInjector = activeDashboard === "injector" || data.inputs?.chamber_source === "injector";
+        target.innerHTML = expectsInjector
+          ? `<div class="notice active error">Die aktuelle Antwort enthält keine Injektordaten. Bitte Berechnung erneut starten; falls oben ein Fehler steht, wurde die Injektor-Rechnung nicht abgeschlossen.</div>`
+          : `<div class="notice active">Das Injektor-Dashboard ist nicht aktiv; diese Rechnung nutzt manuelle Kammerbedingungen.</div>`;
         return;
       }
 
@@ -1756,11 +2041,12 @@
 
       const body = rows.map(([label, value, unit, digits]) => {
         const rendered = typeof value === "string" ? value : formatValue(value, digits);
+        const level = highlightFor(label, value, data);
         const help = tableDescriptions[label] || "";
         const labelHtml = help
           ? `<span class="label-help-target" data-help="${escapeHtml(help)}">${escapeHtml(label)}</span>`
           : escapeHtml(label);
-        return `<tr><td>${labelHtml}</td><td>${escapeHtml(rendered)}</td><td>${escapeHtml(unit)}</td></tr>`;
+        return `<tr class="${level ? `highlight-row highlight-${level}` : ""}"><td>${labelHtml}</td><td>${highlightedValueHtml(rendered, level)}</td><td>${escapeHtml(unit)}</td></tr>`;
       }).join("");
       const warningHtml = injector.warnings && injector.warnings.length
         ? `<div class="notice active">${escapeHtml(injector.warnings.join(" "))}</div>`
@@ -2262,7 +2548,8 @@
     async function calculate() {
       const button = document.getElementById("calculateBtn");
       if (button) button.disabled = true;
-      setStatus("Rechnet");
+      setStatus("Rechnet", "busy");
+      setInjectorPendingState();
 
       try {
         const response = await fetch("/api/calculate", {
@@ -2322,6 +2609,10 @@
         activeInputMode = defaults.nozzle_mode === "given_geometry" ? "exit" : "design";
         formValues = { ...defaults, nozzle_mode: currentInputMode().nozzleMode };
         renderForm(formValues);
+        refreshConfigList().catch(error => {
+          notice.className = "notice active error";
+          notice.textContent = error.message;
+        });
         calculate();
       })
       .catch(error => {
