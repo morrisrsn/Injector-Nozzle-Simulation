@@ -158,7 +158,7 @@ class GasState:
     rho: float
     R_spec: float
     cp: float
-    kappa: float
+    gamma: float
     M_w: float  # Molare Masse [kg/kmol]
     Z: float = 1.0  # Kompressibilitätsfaktor
     composition: dict = field(default_factory=dict)
@@ -168,7 +168,7 @@ class GasState:
     @property
     def a(self) -> float:
         """Schallgeschwindigkeit [m/s]"""
-        return np.sqrt(self.kappa * self.R_spec * self.T * self.Z)
+        return np.sqrt(self.gamma * self.R_spec * self.T * self.Z)
 
 @dataclass
 class NozzleGeometry:
@@ -416,10 +416,10 @@ def product_properties(products: dict, T: float, p: float):
     cp_molar = sum(mole_fractions[species] * nasa_cp_molar(species, T) for species in mole_fractions)
     cp_mass = cp_molar / M_w_mix
     R_spec = R_UNIV / M_w_mix
-    kappa = cp_mass / (cp_mass - R_spec)
+    gamma = cp_mass / (cp_mass - R_spec)
     rho = p / (R_spec * T)
     partial_pressures = {species: y * p for species, y in mole_fractions.items()}
-    return GasState(p, T, rho, R_spec, cp_mass, kappa, M_w_mix, 1.0, mole_fractions, partial_pressures)
+    return GasState(p, T, rho, R_spec, cp_mass, gamma, M_w_mix, 1.0, mole_fractions, partial_pressures)
 
 def solve_enthalpy_temperature(balance, inputs: NozzleInput, metadata: dict, H_reactants: float):
     T_min = max(220.0, min(inputs.fuel_T, inputs.oxidizer_T, T_REF) - 80.0)
@@ -540,13 +540,13 @@ def fluid_properties(fluid: str, p: float, T: float):
             cv = CP.PropsSI("CVMASS", "P", p, "T", T, cp_name)
             M = CP.PropsSI("M", "P", p, "T", T, cp_name) * 1000
             phase = CP.PhaseSI("P", p, "T", T, cp_name)
-            return {"rho": rho, "cp": cp, "kappa": cp / cv, "R_spec": R_UNIV / M, "M_w": M, "phase": phase, "warnings": warnings_list}
+            return {"rho": rho, "cp": cp, "gamma": cp / cv, "R_spec": R_UNIV / M, "M_w": M, "phase": phase, "warnings": warnings_list}
         except Exception as exc:
             warnings_list.append(f"CoolProp konnte {fluid} nicht auswerten ({exc}); nutze Fallback-Fluidmodell.")
 
     if fuel_name == "C2H5OH":
         rho = max(650.0, 789.0 - 0.85 * (T - 293.15))
-        return {"rho": rho, "cp": 2440.0, "kappa": None, "R_spec": None, "M_w": 46.06844, "phase": "liquid", "warnings": warnings_list}
+        return {"rho": rho, "cp": 2440.0, "gamma": None, "R_spec": None, "M_w": 46.06844, "phase": "liquid", "warnings": warnings_list}
 
     if name == "N2O":
         T_c = 309.57
@@ -567,7 +567,7 @@ def fluid_properties(fluid: str, p: float, T: float):
             rho = 0.65 * rho_liq + 0.35 * rho_gas
             phase = "two_phase"
             warnings_list.append("N2O ist nahe der Siedelinie; Injektor-Massenstrom ist als homogenes Zweiphasen-Fallback modelliert.")
-        return {"rho": rho, "cp": 880.0, "kappa": 1.28, "R_spec": R_UNIV / 44.0128, "M_w": 44.0128, "phase": phase, "p_vap": p_vap, "warnings": warnings_list}
+        return {"rho": rho, "cp": 880.0, "gamma": 1.28, "R_spec": R_UNIV / 44.0128, "M_w": 44.0128, "phase": phase, "p_vap": p_vap, "warnings": warnings_list}
 
     gas_data = {
         "O2": (31.9988, 1.4),
@@ -576,9 +576,9 @@ def fluid_properties(fluid: str, p: float, T: float):
         "CH4": (16.0425, 1.31),
         "H2": (2.01588, 1.405),
     }
-    M, kappa = gas_data.get(fuel_name, gas_data.get(name, (28.97, 1.4)))
+    M, gamma = gas_data.get(fuel_name, gas_data.get(name, (28.97, 1.4)))
     R_spec = R_UNIV / M
-    return {"rho": p / (R_spec * T), "cp": kappa * R_spec / (kappa - 1), "kappa": kappa, "R_spec": R_spec, "M_w": M, "phase": "gas", "warnings": warnings_list}
+    return {"rho": p / (R_spec * T), "cp": gamma * R_spec / (gamma - 1), "gamma": gamma, "R_spec": R_spec, "M_w": M, "phase": "gas", "warnings": warnings_list}
 
 def liquid_orifice_stream(label: str, rho: float, p_tank: float, T_tank: float, p_chamber: float, area: float, Cd: float):
     dp = max(p_tank - p_chamber, 0.0)
@@ -598,26 +598,26 @@ def liquid_orifice_stream(label: str, rho: float, p_tank: float, T_tank: float, 
     }
 
 def gas_orifice_stream(label: str, props: dict, p_tank: float, T_tank: float, p_chamber: float, area: float, Cd: float):
-    kappa = props["kappa"]
+    gamma = props["gamma"]
     R = props["R_spec"]
-    if area <= 0 or p_tank <= p_chamber or kappa is None or R is None:
+    if area <= 0 or p_tank <= p_chamber or gamma is None or R is None:
         return {"label": label, "mdot": 0.0, "velocity": 0.0, "T_exit": T_tank, "p_exit": p_chamber, "rho": props["rho"], "phase": props["phase"], "choked": False, "mach": 0.0, "dp": max(p_tank - p_chamber, 0.0)}
 
-    critical_ratio = (2 / (kappa + 1)) ** (kappa / (kappa - 1))
+    critical_ratio = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
     pressure_ratio = p_chamber / p_tank
     if pressure_ratio <= critical_ratio:
         mach = 1.0
-        T_exit = T_tank * 2 / (kappa + 1)
+        T_exit = T_tank * 2 / (gamma + 1)
         p_exit = p_tank * critical_ratio
-        mdot = Cd * area * p_tank / np.sqrt(T_tank) * np.sqrt(kappa / R) * (2 / (kappa + 1)) ** ((kappa + 1) / (2 * (kappa - 1)))
+        mdot = Cd * area * p_tank / np.sqrt(T_tank) * np.sqrt(gamma / R) * (2 / (gamma + 1)) ** ((gamma + 1) / (2 * (gamma - 1)))
         choked = True
     else:
-        mach = np.sqrt(max(0.0, (2 / (kappa - 1)) * ((p_tank / p_chamber) ** ((kappa - 1) / kappa) - 1)))
-        T_exit = T_tank / (1 + (kappa - 1) / 2 * mach**2)
+        mach = np.sqrt(max(0.0, (2 / (gamma - 1)) * ((p_tank / p_chamber) ** ((gamma - 1) / gamma) - 1)))
+        T_exit = T_tank / (1 + (gamma - 1) / 2 * mach**2)
         p_exit = p_chamber
-        mdot = Cd * area * p_tank / np.sqrt(T_tank) * np.sqrt(kappa / R) * mach * (1 + (kappa - 1) / 2 * mach**2) ** (-(kappa + 1) / (2 * (kappa - 1)))
+        mdot = Cd * area * p_tank / np.sqrt(T_tank) * np.sqrt(gamma / R) * mach * (1 + (gamma - 1) / 2 * mach**2) ** (-(gamma + 1) / (2 * (gamma - 1)))
         choked = False
-    velocity = mach * np.sqrt(kappa * R * T_exit)
+    velocity = mach * np.sqrt(gamma * R * T_exit)
     rho_exit = p_exit / (R * T_exit)
     return {
         "label": label,
@@ -823,9 +823,9 @@ class ThermoModel:
                 cv = CP.PropsSI('CVMASS', 'P', p, 'T', T, gas)
                 M_w = CP.PropsSI('M', 'P', p, 'T', T, gas) * 1000  # kg/kmol
                 Z = CP.PropsSI('Z', 'P', p, 'T', T, gas)
-                kappa = cp / cv
+                gamma = cp / cv
                 R_spec = R_UNIV / M_w
-                return GasState(p, T, rho, R_spec, cp, kappa, M_w, Z, {gas: 1.0})
+                return GasState(p, T, rho, R_spec, cp, gamma, M_w, Z, {gas: 1.0})
             except Exception as e:
                 warnings.warn(f"CoolProp Fehler ({e}). Nutze idealisiertes Fallback.")
         
@@ -838,11 +838,11 @@ class ThermoModel:
             "Ethanol": (46.07, 1.13),
             "C2H5OH": (46.07, 1.13),
         }
-        M_w, kappa = fallback.get(gas, fallback.get(normalize_oxidizer(gas), (32.0, 1.4)))
+        M_w, gamma = fallback.get(gas, fallback.get(normalize_oxidizer(gas), (32.0, 1.4)))
         R_spec = R_UNIV / M_w
         rho = p / (R_spec * T)
-        cp = kappa * R_spec / (kappa - 1)
-        return GasState(p, T, rho, R_spec, cp, kappa, M_w, 1.0, {gas: 1.0})
+        cp = gamma * R_spec / (gamma - 1)
+        return GasState(p, T, rho, R_spec, cp, gamma, M_w, 1.0, {gas: 1.0})
 
     def _compute_combustion_state(self) -> GasState:
         """Bestimmt adiabate Flammentemperatur und Stoffwerte."""
@@ -863,8 +863,8 @@ class NozzleSolver:
 
     def check_choking(self) -> bool:
         """Prüft, ob die Strömung den kritischen Zustand erreicht."""
-        kappa = self.state.kappa
-        p_star = self.state.p * (2 / (kappa + 1)) ** (kappa / (kappa - 1))
+        gamma = self.state.gamma
+        p_star = self.state.p * (2 / (gamma + 1)) ** (gamma / (gamma - 1))
         if self.inputs.p_amb > p_star:
             warnings.warn(f"WARNUNG: p_amb ({self.inputs.p_amb} Pa) > p_star ({p_star:.1f} Pa). "
                           "Strömung ist im Hals nicht kritisch (unchoked)!")
@@ -877,14 +877,14 @@ class NozzleSolver:
 
     def choked_mass_flux(self) -> float:
         """Massenstrom pro Halsfläche für kritische Strömung."""
-        kappa = self.state.kappa
+        gamma = self.state.gamma
         R = self.state.R_spec
         T0 = self.state.T
         p0 = self.state.p
         Cd = self.inputs.C_d
         
-        term1 = Cd * p0 / np.sqrt(T0) * np.sqrt(kappa / R)
-        term2 = (2 / (kappa + 1)) ** ((kappa + 1) / (2 * (kappa - 1)))
+        term1 = Cd * p0 / np.sqrt(T0) * np.sqrt(gamma / R)
+        term2 = (2 / (gamma + 1)) ** ((gamma + 1) / (2 * (gamma - 1)))
         return term1 * term2
 
     def compute_mdot_for_throat(self, A_t: float) -> float:
@@ -892,32 +892,32 @@ class NozzleSolver:
 
     def solve_exit_mach(self) -> float:
         """Löst iterativ nach der Austrittsmachzahl bei p_e = p_amb (Idealexpansion)."""
-        kappa = self.state.kappa
+        gamma = self.state.gamma
         p_ratio = self.state.p / self.inputs.p_amb  # p0 / p_e
-        # p0/p = (1 + (k-1)/2 M^2)^(k/(k-1))
+        # p0/p = (1 + (gamma-1)/2 M^2)^(gamma/(gamma-1))
         # Umgestellt nach M:
-        M_e = np.sqrt((2 / (kappa - 1)) * (p_ratio ** ((kappa - 1) / kappa) - 1))
+        M_e = np.sqrt((2 / (gamma - 1)) * (p_ratio ** ((gamma - 1) / gamma) - 1))
         return M_e
 
     def pressure_from_mach(self, M: float) -> float:
-        kappa = self.state.kappa
-        return self.state.p / (1 + (kappa - 1) / 2 * M**2) ** (kappa / (kappa - 1))
+        gamma = self.state.gamma
+        return self.state.p / (1 + (gamma - 1) / 2 * M**2) ** (gamma / (gamma - 1))
 
     def temperature_from_mach(self, M: float) -> float:
-        kappa = self.state.kappa
-        return self.state.T / (1 + (kappa - 1) / 2 * M**2)
+        gamma = self.state.gamma
+        return self.state.T / (1 + (gamma - 1) / 2 * M**2)
 
     def velocity_from_mach(self, M: float) -> float:
         T = self.temperature_from_mach(M)
-        return M * np.sqrt(self.state.kappa * self.state.R_spec * T)
+        return M * np.sqrt(self.state.gamma * self.state.R_spec * T)
 
     def area_ratio(self, M: float) -> float:
         """Berechnet das Flächenverhältnis A/A* für eine gegebene Machzahl."""
-        kappa = self.state.kappa
+        gamma = self.state.gamma
         if M < 1e-5: return np.inf
-        term1 = 2 / (kappa + 1)
-        term2 = 1 + (kappa - 1) / 2 * M**2
-        return (1 / M) * (term1 * term2) ** ((kappa + 1) / (2 * (kappa - 1)))
+        term1 = 2 / (gamma + 1)
+        term2 = 1 + (gamma - 1) / 2 * M**2
+        return (1 / M) * (term1 * term2) ** ((gamma + 1) / (2 * (gamma - 1)))
 
     def mach_from_area_ratio(self, area_ratio: float, supersonic: bool = True) -> float:
         """Findet die Machzahl für ein gegebenes Flächenverhältnis."""
@@ -1121,7 +1121,7 @@ def calculate_nozzle(config_dict=None, num_points=100, write_files=False, make_p
             "rho": float(state.rho),
             "R_spec": float(state.R_spec),
             "cp": float(state.cp),
-            "kappa": float(state.kappa),
+            "gamma": float(state.gamma),
             "M_w": float(state.M_w),
             "Z": float(state.Z),
             "a": float(state.a),
@@ -1183,7 +1183,7 @@ def _print_result(result):
     print(f"T_c       : {state['T']:.2f} K")
     print(f"R_mix     : {state['R_spec']:.2f} J/(kg*K)")
     print(f"Molar Mass: {state['M_w']:.2f} kg/kmol")
-    print(f"Kappa (k) : {state['kappa']:.4f}")
+    print(f"Gamma (γ) : {state['gamma']:.4f}")
     print(f"cp        : {state['cp']:.2f} J/(kg*K)")
     print(f"Z         : {state['Z']:.4f}")
     print("Zusammensetzung:", ", ".join([f"{k}: {v:.2%}" for k, v in state["composition"].items()]))

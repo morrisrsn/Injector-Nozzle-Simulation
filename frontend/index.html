@@ -1121,7 +1121,7 @@
         ["Dichte", "kg/m³", data => data.state.rho, 4],
         ["R_mix", "J/(kg*K)", data => data.state.R_spec, 2],
         ["Molare Masse", "kg/kmol", data => data.state.M_w, 3],
-        ["Kappa", "-", data => data.state.kappa, 4],
+        ["Gamma", "-", data => data.state.gamma, 4],
         ["cp", "J/(kg*K)", data => data.state.cp, 2],
         ["Z", "-", data => data.state.Z, 4],
         ["Schallgeschw.", "m/s", data => data.state.a, 2]
@@ -1163,7 +1163,7 @@
       "Dichte": "Gasdichte im Kammerzustand aus idealer Gasgleichung.",
       "R_mix": "Spezifische Gaskonstante der Produkt- oder Kaltgasmischung.",
       "Molare Masse": "Gemittelte molare Masse der Gaszusammensetzung.",
-      "Kappa": "Isentropenexponent cp/cv, wichtig für Mach-, Druck- und Temperaturbeziehungen.",
+      "Gamma": "Isentropenexponent cp/cv, wichtig für Mach-, Druck- und Temperaturbeziehungen.",
       "cp": "Spezifische Wärmekapazität bei konstantem Druck.",
       "Z": "Kompressibilitätsfaktor; aktuell 1.0 im idealen Gasmodell.",
       "Schallgeschw.": "Schallgeschwindigkeit im Kammerzustand.",
@@ -1733,7 +1733,7 @@
         if (ratio > 1.25 || ratio < 0.8) return "warn";
         return "good";
       }
-      if (label === "Kappa" && Number.isFinite(numeric)) {
+      if (label === "Gamma" && Number.isFinite(numeric)) {
         return numeric < 1.05 || numeric > 1.7 ? "warn" : "good";
       }
       if (label === "T_c" && Number.isFinite(numeric)) {
