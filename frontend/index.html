@@ -1851,14 +1851,14 @@
       return unique;
     }
 
-    function interpolateRowsEvery10mm(rows, fields) {
+    function interpolateRowsEveryXmm(rows, fields) {
       const source = sortedUniqueByX(rows);
       if (!source.length) return [];
       if (source.length === 1) return source;
 
       const minX = source[0]["x [m]"];
       const maxX = source[source.length - 1]["x [m]"];
-      const step = 0.01;
+      const step = 0.003;
       const targets = [];
       const count = Math.floor(Math.max(maxX - minX, 0) / step);
       for (let i = 0; i <= count; i += 1) {
@@ -1892,7 +1892,7 @@
 
     function renderContourTable(data) {
       const target = document.getElementById("tab-contour");
-      const sampled = interpolateRowsEvery10mm(data.contour, ["r [m]"]);
+      const sampled = interpolateRowsEveryXmm(data.contour, ["r [m]"]);
       const rows = sampled.map(point => `
         <tr>
           <td>${formatValue(point["x [m]"] * 1000, 2)}</td>
@@ -1918,7 +1918,7 @@
 
     function renderFlowTable(data) {
       const target = document.getElementById("tab-flow");
-      const sampled = interpolateRowsEvery10mm(data.flowfield || [], ["M [-]", "p [Pa]", "T [K]", "v [m/s]"]);
+      const sampled = interpolateRowsEveryXmm(data.flowfield || [], ["M [-]", "p [Pa]", "T [K]", "v [m/s]"]);
       const rows = sampled.map(point => `
         <tr>
           <td>${formatValue(point["x [m]"] * 1000, 2)}</td>
