@@ -942,6 +942,8 @@
     <option value="Air"></option>
     <option value="Ethanol"></option>
     <option value="CH4"></option>
+    <option value="C4H10"></option>
+    <option value="Butan"></option>
     <option value="H2"></option>
   </datalist>
   <datalist id="fuelOptions">
@@ -949,6 +951,9 @@
     <option value="Ethanol"></option>
     <option value="CH4"></option>
     <option value="Methan"></option>
+    <option value="C4H10"></option>
+    <option value="Butan"></option>
+    <option value="Butane"></option>
     <option value="H2"></option>
     <option value="Wasserstoff"></option>
   </datalist>
@@ -1015,8 +1020,8 @@
         tab: "common",
         fields: [
           { key: "combustion_model", label: "Verbrennungsmodell", type: "segment", options: [["equilibrium", "Gleichgewicht"], ["complete", "Vollständig"]], full: true, desc: "Gleichgewicht minimiert Gibbs-Energie mit NASA-7-Produktdaten; vollständig erzwingt CO2/H2O/N2/O2 ohne Dissoziation." },
-          { key: "gas_medium", label: "Kaltgas", type: "text", list: "gasOptions", quickOptions: ["O2", "Air", "N2", "N2O", "CH4", "H2"], desc: "Gasname für die Kaltgasrechnung, zum Beispiel O2 oder H2." },
-          { key: "fuel", label: "Brennstoff", type: "text", list: "fuelOptions", quickOptions: ["C2H5OH", "CH4", "H2"], desc: "Brennstoffformel für den Verbrennungsmodus; unterstützt werden C2H5OH, CH4 und H2." },
+          { key: "gas_medium", label: "Kaltgas", type: "text", list: "gasOptions", quickOptions: ["O2", "Air", "N2", "N2O", "CH4", "C4H10", "H2"], desc: "Gasname für die Kaltgasrechnung, zum Beispiel O2, H2 oder C4H10." },
+          { key: "fuel", label: "Brennstoff", type: "text", list: "fuelOptions", quickOptions: ["C2H5OH", "CH4", "C4H10", "H2"], desc: "Brennstoffformel für den Verbrennungsmodus; unterstützt werden C2H5OH, CH4, C4H10 und H2." },
           { key: "oxidizer", label: "Oxidator", type: "text", list: "oxidizerOptions", quickOptions: ["Air", "O2", "N2O", "Lachgas"], desc: "Oxidationsmittel im Verbrennungsmodus, aktuell Air, O2 oder N2O/Lachgas." },
           { key: "phi", label: "Äquivalenzverhältnis", unit: "-", type: "number", min: 0.01, desc: "Verhältnis von realem zu stöchiometrischem Kraftstoff-Oxidator-Verhältnis." }
         ]
@@ -1050,7 +1055,7 @@
         tab: "injector",
         fields: [
           { key: "mode", label: "Modus", type: "segment", options: [["combustion", "Verbrennung"], ["cold_gas", "Kaltgas"]], full: true, desc: "Für Injektor + Düse ist Verbrennung normalerweise der sinnvolle Modus." },
-          { key: "fuel", label: "Brennstoff", type: "text", list: "fuelOptions", quickOptions: ["C2H5OH", "CH4", "H2"], desc: "Brennstoff aus dem Kraftstofftank; unterstützt werden C2H5OH, CH4 und H2." },
+          { key: "fuel", label: "Brennstoff", type: "text", list: "fuelOptions", quickOptions: ["C2H5OH", "CH4", "C4H10", "H2"], desc: "Brennstoff aus dem Kraftstofftank; unterstützt werden C2H5OH, CH4, C4H10 und H2." },
           { key: "oxidizer", label: "Oxidator", type: "text", list: "oxidizerOptions", quickOptions: ["N2O", "O2", "Air", "Lachgas"], desc: "Oxidator aus dem Oxidatortank, zum Beispiel N2O/Lachgas oder O2." },
           { key: "combustion_model", label: "Verbrennungsmodell", type: "segment", options: [["equilibrium", "Gleichgewicht"], ["complete", "Vollständig"]], full: true, desc: "Thermochemie-Modell nach perfekter Mischung hinter dem Injektor." },
           { key: "p_amb", label: "Umgebungsdruck", unit: "Pa", type: "number", min: 1, desc: "Umgebungsdruck für die spätere Düsenexpansion." },
@@ -1196,7 +1201,7 @@
       "T [K]": "Lokale statische Temperatur entlang der Kontur.",
       "v [m/s]": "Lokale Strömungsgeschwindigkeit entlang der Kontur.",
       "Modell": "Verwendetes Thermochemiemodell.",
-      "Stöchiometrie": "Stöchiometrische Reaktionsbilanz für einen Mol Ethanol.",
+      "Stöchiometrie": "Stöchiometrische Reaktionsbilanz für einen Mol Brennstoff.",
       "O/F stöch.": "Stöchiometrisches Oxidator-zu-Brennstoff-Massenverhältnis.",
       "O/F aktuell": "Durch phi bestimmtes aktuelles Oxidator-zu-Brennstoff-Massenverhältnis.",
       "Kammerdruck": "Aus Injektor-/Düsen-Massenbilanz bestimmter Brennkammerdruck.",

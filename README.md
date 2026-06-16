@@ -241,7 +241,7 @@ Geeignet für:
 
 ### Verbrennungsmodus
 
-Im Verbrennungsmodus wird ein Reaktionsgas aus Brennstoff und Oxidator berechnet. Der aktuelle Fokus liegt auf Ethanol als Brennstoff.
+Im Verbrennungsmodus wird ein Reaktionsgas aus Brennstoff und Oxidator berechnet. Unterstützt werden aktuell Ethanol, Methan, n-Butan/C4H10 und Wasserstoff.
 
 Unterstützte bzw. vorgesehene Oxidatoren:
 
@@ -404,7 +404,7 @@ from thermodynamics import NozzleInput, calculate_nozzle
 
 ## Bekannte Einschränkungen
 
-- Die Verbrennungsrechnung ist vereinfacht und aktuell stark auf Ethanol ausgelegt.
+- Die Verbrennungsrechnung ist vereinfacht und nutzt reduzierte Produktchemie mit groben Stoffdaten-Fallbacks.
 - Ohne CoolProp werden Stoffdaten über vereinfachte Fallback-Modelle berechnet.
 - Ohne Cantera wird keine detaillierte externe Verbrennungschemie genutzt.
 - Die Injektorberechnung ist ein vereinfachtes 0D-Modell.

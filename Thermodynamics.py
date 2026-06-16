@@ -80,6 +80,12 @@ ETHANOL_HF_LIQ = -277.69e6  # [J/kmol] bei 298.15 K
 ETHANOL_CP_LIQ = 112400.0   # [J/(kmol*K)] einfache Sensible-Enthalpie-Naeherung
 CH4_HF = -74.873e6          # [J/kmol] bei 298.15 K
 CH4_CP = 35700.0            # [J/(kmol*K)] einfache Sensible-Enthalpie-Naeherung
+BUTANE_M = 58.1222          # [kg/kmol]
+BUTANE_HF_LIQ = -148.0e6    # [J/kmol] bei 298.15 K, n-Butan fluessig
+BUTANE_CP_LIQ = 134000.0    # [J/(kmol*K)] einfache Sensible-Enthalpie-Naeherung
+BUTANE_CP_GAS = 98490.0     # [J/(kmol*K)] bei 298.15 K
+BUTANE_T_C = 425.125        # [K]
+BUTANE_P_C = 3.796e6        # [Pa]
 N2O_HF = 82.05e6            # [J/kmol] bei 298.15 K
 N2O_CP = 38000.0            # [J/(kmol*K)] einfache Sensible-Enthalpie-Naeherung
 T_REF = 298.15
@@ -87,6 +93,7 @@ T_REF = 298.15
 FUEL_DATA = {
     "C2H5OH": {"formula": "C2H5OH", "M": 46.06844, "elements": {"C": 2.0, "H": 6.0, "O": 1.0, "N": 0.0}, "hf": ETHANOL_HF_LIQ, "cp": ETHANOL_CP_LIQ},
     "CH4": {"formula": "CH4", "M": 16.0425, "elements": {"C": 1.0, "H": 4.0, "O": 0.0, "N": 0.0}, "hf": CH4_HF, "cp": CH4_CP},
+    "C4H10": {"formula": "C4H10", "M": BUTANE_M, "elements": {"C": 4.0, "H": 10.0, "O": 0.0, "N": 0.0}, "hf": BUTANE_HF_LIQ, "cp": BUTANE_CP_LIQ},
     "H2": {"formula": "H2", "M": 2.01588, "elements": {"C": 0.0, "H": 2.0, "O": 0.0, "N": 0.0}, "hf": 0.0, "cp": None},
 }
 
@@ -224,6 +231,7 @@ def normalize_oxidizer(name: str) -> str:
         "nitrousoxide": "N2O",
         "distickstoffmonoxid": "N2O",
         "n2": "N2",
+        "nitrogen": "N2",
         "stickstoff": "N2",
     }
     return aliases.get(key, name)
@@ -237,11 +245,40 @@ def normalize_fuel(name: str) -> str:
         "ch4": "CH4",
         "methane": "CH4",
         "methan": "CH4",
+        "c4h10": "C4H10",
+        "butane": "C4H10",
+        "butan": "C4H10",
+        "n-butane": "C4H10",
+        "n-butan": "C4H10",
+        "nbutane": "C4H10",
+        "nbutan": "C4H10",
         "h2": "H2",
         "hydrogen": "H2",
         "wasserstoff": "H2",
     }
     return aliases.get(key, name)
+
+def coolprop_fluid_name(fluid: str) -> str:
+    fuel_name = normalize_fuel(fluid)
+    oxidizer_name = normalize_oxidizer(fluid)
+    names = {
+        "C2H5OH": "Ethanol",
+        "Ethanol": "Ethanol",
+        "CH4": "Methane",
+        "Methane": "Methane",
+        "C4H10": "n-Butane",
+        "Butane": "n-Butane",
+        "H2": "Hydrogen",
+        "Hydrogen": "Hydrogen",
+        "N2O": "NitrousOxide",
+        "O2": "Oxygen",
+        "N2": "Nitrogen",
+        "Air": "Air",
+    }
+    return names.get(fuel_name, names.get(oxidizer_name, fluid))
+
+def is_gas_like_phase(phase: str) -> bool:
+    return str(phase).lower() in {"gas", "supercritical", "supercritical_gas"}
 
 def fuel_stoich_o2(fuel: str) -> float:
     data = FUEL_DATA[fuel]
@@ -271,7 +308,8 @@ def thermochemistry_phi_bounds(inputs: NozzleInput):
 def reactant_inventory(inputs: NozzleInput):
     fuel = normalize_fuel(inputs.fuel)
     if fuel not in FUEL_DATA:
-        raise ValueError("Die Gleichgewichtsrechnung unterstützt aktuell C2H5OH, CH4 und H2 als Brennstoff.")
+        supported = ", ".join(FUEL_DATA.keys())
+        raise ValueError(f"Die Gleichgewichtsrechnung unterstützt aktuell {supported} als Brennstoff.")
 
     fuel_data = FUEL_DATA[fuel]
     oxidizer = normalize_oxidizer(inputs.oxidizer)
@@ -517,6 +555,16 @@ def n2o_vapor_pressure(T: float) -> float:
     A = np.log(p_293) + B / 293.15
     return float(np.exp(A - B / T))
 
+def butane_vapor_pressure(T: float) -> float:
+    if T >= BUTANE_T_C:
+        return BUTANE_P_C
+
+    if T >= 272.66:
+        A, B, C = 4.35576, 1175.581, -2.071
+    else:
+        A, B, C = 3.85002, 909.65, -36.146
+    return float(1e5 * 10 ** (A - B / (T + C)))
+
 def fluid_properties(fluid: str, p: float, T: float):
     fuel_name = normalize_fuel(fluid)
     name = normalize_oxidizer(fluid)
@@ -524,17 +572,7 @@ def fluid_properties(fluid: str, p: float, T: float):
 
     if COOLPROP_AVAILABLE:
         try:
-            cp_name = {
-                "C2H5OH": "Ethanol",
-                "Ethanol": "Ethanol",
-                "CH4": "Methane",
-                "Methane": "Methane",
-                "H2": "Hydrogen",
-                "Hydrogen": "Hydrogen",
-                "N2O": "NitrousOxide",
-                "O2": "Oxygen",
-                "Air": "Air",
-            }.get(fuel_name, {"N2O": "NitrousOxide", "O2": "Oxygen", "Air": "Air"}.get(name, fluid))
+            cp_name = coolprop_fluid_name(fluid)
             rho = CP.PropsSI("D", "P", p, "T", T, cp_name)
             cp = CP.PropsSI("C", "P", p, "T", T, cp_name)
             cv = CP.PropsSI("CVMASS", "P", p, "T", T, cp_name)
@@ -547,6 +585,27 @@ def fluid_properties(fluid: str, p: float, T: float):
     if fuel_name == "C2H5OH":
         rho = max(650.0, 789.0 - 0.85 * (T - 293.15))
         return {"rho": rho, "cp": 2440.0, "gamma": None, "R_spec": None, "M_w": 46.06844, "phase": "liquid", "warnings": warnings_list}
+
+    if fuel_name == "C4H10":
+        p_vap = butane_vapor_pressure(T)
+        R_spec = R_UNIV / BUTANE_M
+        gamma = BUTANE_CP_GAS / (BUTANE_CP_GAS - R_UNIV)
+        if T > 0.98 * BUTANE_T_C:
+            warnings_list.append("Butan liegt nahe am kritischen Punkt; Dichte und Injektorstroemung sind nur grob angenaehert.")
+        if p > 1.05 * p_vap and T < BUTANE_T_C:
+            rho = max(350.0, min(650.0, 584.0 - 1.1 * (T - 293.15)))
+            phase = "liquid"
+        elif p < 0.95 * p_vap:
+            rho = p / (R_spec * T)
+            phase = "gas"
+        else:
+            rho_liq = max(350.0, min(650.0, 584.0 - 1.1 * (T - 293.15)))
+            rho_gas = p / (R_spec * T)
+            rho = 0.7 * rho_liq + 0.3 * rho_gas
+            phase = "two_phase"
+            warnings_list.append("Butan ist nahe der Siedelinie; Injektor-Massenstrom ist als homogenes Zweiphasen-Fallback modelliert.")
+        cp_mass = (BUTANE_CP_GAS if phase == "gas" else BUTANE_CP_LIQ) / BUTANE_M
+        return {"rho": rho, "cp": cp_mass, "gamma": gamma, "R_spec": R_spec, "M_w": BUTANE_M, "phase": phase, "p_vap": p_vap, "warnings": warnings_list}
 
     if name == "N2O":
         T_c = 309.57
@@ -574,6 +633,7 @@ def fluid_properties(fluid: str, p: float, T: float):
         "Air": (28.97, 1.4),
         "N2": (28.0134, 1.4),
         "CH4": (16.0425, 1.31),
+        "C4H10": (BUTANE_M, BUTANE_CP_GAS / (BUTANE_CP_GAS - R_UNIV)),
         "H2": (2.01588, 1.405),
     }
     M, gamma = gas_data.get(fuel_name, gas_data.get(name, (28.97, 1.4)))
@@ -641,7 +701,7 @@ def injector_streams_for_pressure(inputs: NozzleInput, p_chamber: float):
     warnings_list.extend(fuel_props.pop("warnings", []))
     warnings_list.extend(ox_props.pop("warnings", []))
 
-    if fuel_props["phase"] == "gas":
+    if is_gas_like_phase(fuel_props["phase"]):
         fuel = gas_orifice_stream("fuel", fuel_props, inputs.fuel_tank_p, inputs.fuel_tank_T, p_chamber, fuel_area, inputs.fuel_injector_Cd)
     else:
         fuel = liquid_orifice_stream("fuel", fuel_props["rho"], inputs.fuel_tank_p, inputs.fuel_tank_T, p_chamber, fuel_area, inputs.fuel_injector_Cd)
@@ -656,7 +716,7 @@ def injector_streams_for_pressure(inputs: NozzleInput, p_chamber: float):
     })
 
     ox_name = normalize_oxidizer(inputs.oxidizer)
-    if ox_props["phase"] == "gas":
+    if is_gas_like_phase(ox_props["phase"]):
         oxidizer = gas_orifice_stream("oxidizer", ox_props, inputs.oxidizer_tank_p, inputs.oxidizer_tank_T, p_chamber, ox_area, inputs.oxidizer_injector_Cd)
     else:
         oxidizer = liquid_orifice_stream("oxidizer", ox_props["rho"], inputs.oxidizer_tank_p, inputs.oxidizer_tank_T, p_chamber, ox_area, inputs.oxidizer_injector_Cd)
@@ -808,24 +868,26 @@ class ThermoModel:
         p = self.inputs.p_c
         T = self.inputs.T_in
         gas = self.inputs.gas_medium
+        fuel_name = normalize_fuel(gas)
+        medium_name = fuel_name if fuel_name in FUEL_DATA else normalize_oxidizer(gas)
         
         if COOLPROP_AVAILABLE:
             try:
-                # Prüfe, ob Ethanol gasförmig ist
-                if gas.lower() in ["ethanol", "ethylalcohol"]:
-                    phase = CP.PhaseSI('P', p, 'T', T, gas)
-                    if phase != "gas" and phase != "supercritical_gas":
+                cp_gas = coolprop_fluid_name(gas)
+                if fuel_name in {"C2H5OH", "C4H10"}:
+                    phase = CP.PhaseSI('P', p, 'T', T, cp_gas)
+                    if not is_gas_like_phase(phase):
                         warnings.warn(f"Achtung: {gas} liegt bei {p/1e5} bar und {T} K nicht gasförmig vor! "
                                       f"(Phase: {phase}). Zweiphasenströmung wird nicht modelliert.")
                 
-                rho = CP.PropsSI('D', 'P', p, 'T', T, gas)
-                cp = CP.PropsSI('C', 'P', p, 'T', T, gas)
-                cv = CP.PropsSI('CVMASS', 'P', p, 'T', T, gas)
-                M_w = CP.PropsSI('M', 'P', p, 'T', T, gas) * 1000  # kg/kmol
-                Z = CP.PropsSI('Z', 'P', p, 'T', T, gas)
+                rho = CP.PropsSI('D', 'P', p, 'T', T, cp_gas)
+                cp = CP.PropsSI('C', 'P', p, 'T', T, cp_gas)
+                cv = CP.PropsSI('CVMASS', 'P', p, 'T', T, cp_gas)
+                M_w = CP.PropsSI('M', 'P', p, 'T', T, cp_gas) * 1000  # kg/kmol
+                Z = CP.PropsSI('Z', 'P', p, 'T', T, cp_gas)
                 gamma = cp / cv
                 R_spec = R_UNIV / M_w
-                return GasState(p, T, rho, R_spec, cp, gamma, M_w, Z, {gas: 1.0})
+                return GasState(p, T, rho, R_spec, cp, gamma, M_w, Z, {medium_name: 1.0})
             except Exception as e:
                 warnings.warn(f"CoolProp Fehler ({e}). Nutze idealisiertes Fallback.")
         
@@ -837,12 +899,13 @@ class ThermoModel:
             "N2O": (44.0128, 1.28),
             "Ethanol": (46.07, 1.13),
             "C2H5OH": (46.07, 1.13),
+            "C4H10": (BUTANE_M, BUTANE_CP_GAS / (BUTANE_CP_GAS - R_UNIV)),
         }
-        M_w, gamma = fallback.get(gas, fallback.get(normalize_oxidizer(gas), (32.0, 1.4)))
+        M_w, gamma = fallback.get(medium_name, fallback.get(gas, (32.0, 1.4)))
         R_spec = R_UNIV / M_w
         rho = p / (R_spec * T)
         cp = gamma * R_spec / (gamma - 1)
-        return GasState(p, T, rho, R_spec, cp, gamma, M_w, 1.0, {gas: 1.0})
+        return GasState(p, T, rho, R_spec, cp, gamma, M_w, 1.0, {medium_name: 1.0})
 
     def _compute_combustion_state(self) -> GasState:
         """Bestimmt adiabate Flammentemperatur und Stoffwerte."""
@@ -999,7 +1062,7 @@ def print_disclaimer():
     print("- Die Geometrie ist eine 1D-Vorabschätzung (Isentrope Strömung).")
     print("- Brennraumdurchmesser/Länge sind ohne Zusatzannahmen nicht eindeutig.")
     print("- Realgas- und Gleichgewichtsrechnungen (Dissoziation) müssen z.B. mit NASA CEA validiert werden.")
-    print("- Ethanolverbrennung erfordert komplexe Kinetik (Reibung, Wärmeübergang, Grenzschichten fehlen hier).")
+    print("- Die Verbrennungsrechnung bildet komplexe Kinetik, Reibung, Wärmeübergang und Grenzschichten nicht ab.")
     print("- Nicht für fertigungstaugliche oder sicherheitskritische Auslegungen verwenden!")
     print("="*60)
 
